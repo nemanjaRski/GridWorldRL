@@ -16,7 +16,7 @@ predict = tf.argmax(Qout, 1)
 
 nextQ = tf.placeholder(shape=[1, 4], dtype=tf.float32)
 loss = tf.reduce_sum(tf.square(nextQ - Qout))
-trainer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+trainer = tf.train.GradientDescentOptimizer(learning_rate=0.05)
 updateModel = trainer.minimize(loss)
 
 init = tf.initialize_all_variables()
@@ -24,7 +24,7 @@ init = tf.initialize_all_variables()
 # Set learning parameters
 y = .99
 e = 0.1
-num_episodes = 3000
+num_episodes = 2000
 # create lists to contain total rewards and steps per episode
 jList = []
 rList = []
