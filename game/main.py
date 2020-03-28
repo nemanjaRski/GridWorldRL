@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-env = gym.make('FrozenLake-v0', is_slippery = False)
+env = gym.make('FrozenLake-v0', is_slippery = True)
 
 Q = np.zeros([env.observation_space.n,env.action_space.n])
 # Set learning parameters

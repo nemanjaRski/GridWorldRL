@@ -16,7 +16,7 @@ predict = tf.argmax(Qout, 1)
 
 nextQ = tf.placeholder(shape=[1, 4], dtype=tf.float32)
 loss = tf.reduce_sum(tf.square(nextQ - Qout))
-trainer = tf.train.GradientDescentOptimizer(learning_rate=0.05)
+trainer = tf.train.GradientDescentOptimizer(learning_rate=0.1)
 updateModel = trainer.minimize(loss)
 
 init = tf.initialize_all_variables()
@@ -24,7 +24,7 @@ init = tf.initialize_all_variables()
 # Set learning parameters
 y = .99
 e = 0.1
-num_episodes = 2000
+num_episodes = 10000
 # create lists to contain total rewards and steps per episode
 jList = []
 rList = []
@@ -36,7 +36,8 @@ with tf.Session() as sess:
     rAll = 0
     d = False
     j = 0
-    print("Epoch: ", str(i))
+    if i % 100 == 0:
+      print("Epoch: ", str(i), str(sum(rList) / (i + 1)) + "%")
     # The Q-Network
     while j < 99:
       j += 1
@@ -57,8 +58,6 @@ with tf.Session() as sess:
       rAll += r
       s = s1
       if d == True:
-        # Reduce chance of random action as we train the model.
-        e = 1. / ((i / 50) + 10)
         break
     jList.append(j)
     rList.append(rAll)
