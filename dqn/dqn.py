@@ -7,6 +7,7 @@ from keras.optimizers import Adam
 import os
 
 from gridworld import gameEnv
+import matplotlib.pyplot as plt
 
 env = gameEnv(partial=False, size=5)
 
@@ -191,9 +192,10 @@ while num_episode < num_episodes:
                 train_next_state = np.vstack(train_next_state)
 
                 target_q = target_qn.model.predict(train_state)
+                target_q_next_state = target_qn.model.predict(train_next_state)
 
-                target_q_next_state = main_qn.model.predict(train_next_state)
-                train_next_state_action = np.argmax(target_q_next_state, axis=1)
+                main_q_action = main_qn.model.predict(train_next_state)
+                train_next_state_action = np.argmax(main_q_action, axis=1)
                 train_next_state_action = train_next_state_action.astype(np.int)
 
                 train_gameover = train_done == 0
@@ -217,3 +219,36 @@ while num_episode < num_episodes:
     experience_replay.add(episode_buffer.buffer)
     num_steps.append(cur_step)
     rewards.append(sum_rewards)
+
+    if num_episode % print_every == 0:
+        # Print progress
+        mean_loss = np.mean(losses[-(print_every * num_epochs):])
+
+        print("Num episode: {} Mean reward: {:0.4f} Prob random: {:0.4f}, Loss: {:0.04f}".format(
+            num_episode, np.mean(rewards[-print_every:]), prob_random, mean_loss))
+        if np.mean(rewards[-print_every:]) >= goal:
+            print("Training complete!")
+            break
+
+
+
+main_qn.model.save_weights(main_weights_file)
+target_qn.model.save_weights(target_weights_file)
+
+f, axes = plt.subplots(nrows=max_num_step//5, ncols=5,
+                       sharex=True, sharey=True, figsize=(10,20))
+done = False
+num_step = 0
+sum_rewards = 0
+state = env.reset()
+state = process_state(state)
+
+while not done and num_step < max_num_step:
+    action = np.argmax(main_qn.model.predict(np.array([state])),axis=1)
+    next_state, reward, done = env.step(action)
+    state = process_state(next_state)
+    ax = axes.ravel()[num_step]
+    ax.imshow(state)
+    ax.set_axis_off()
+    ax.set_title("#{} a:{} r:{}".format(num_step, action, int(reward)))
+    num_step += 1
