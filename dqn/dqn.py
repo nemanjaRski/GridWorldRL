@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 from keras.models import Model
-from keras.layers import Conv2D, Dense, Input, Flatten, Lambda, MaxPool2D
+from keras.layers import Conv2D, Dense, Input, Flatten, Lambda, MaxPooling2D
 import keras.backend as K
 from keras.optimizers import Adam
 import os
@@ -15,7 +15,7 @@ env = gameEnv(partial=False, size=19, num_goals=15, num_fires=30)
 
 
 def process_state(state):
-    state = state / 255
+    state = (state // 255).astype(np.uint8)
     return state
 
 
@@ -23,8 +23,9 @@ class Qnetwork():
     def __init__(self, final_layer_size):
         self.inputs = Input(shape=[*process_state(env.state).shape], name="main_input")
 
+        """
         self.model = CoordinateChannel2D()(self.inputs)
-
+        
         self.model = Conv2D(
             filters=16,
             kernel_size=[7, 7],
@@ -51,6 +52,13 @@ class Qnetwork():
             padding="same",
             name="conv3"
         )(self.model)
+        """
+
+        x = Conv2D(16, (3, 3), activation='relu', padding='same')(self.inputs)
+        x = MaxPooling2D((2, 2), padding='same')(x)
+        x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
+        x = MaxPooling2D((2, 2), padding='same')(x)
+        self.model = Conv2D(final_layer_size, (3, 3), activation='relu', padding='same')(x)
 
         self.stream_AC = Lambda(lambda layer: layer[:, :, :, :final_layer_size // 2], name="advantage")(self.model)
         self.stream_VC = Lambda(lambda layer: layer[:, :, :, final_layer_size // 2:], name="value")(self.model)
@@ -76,7 +84,7 @@ def update_target_graph(main_graph, target_graph, tau):
 
 
 class ExpierienceReplay:
-    def __init__(self, buffer_size=50000):
+    def __init__(self, buffer_size=20000):
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -155,14 +163,14 @@ tau = 0.1
 prob_random_start = 0.1
 prob_random_end = 0.1
 annealing_steps = 10000.
-final_layer_size = 256
+final_layer_size = 32
 num_episodes = 10000
-pre_train_episodes = 1000
+pre_train_episodes = 500
 max_num_step = 50
 goal = 20
 
 #save/load weights
-load_model = True
+load_model = False
 path = "./models"
 main_weights_file = path + "/main_weights.h5"
 target_weights_file = path + "/target_weights.h5"
