@@ -18,34 +18,34 @@ class gameOb():
 
 
 class gameEnv():
-    def __init__(self, partial, size):
+    def __init__(self, partial, size, num_goals=20, num_fires=10):
         self.sizeX = size
         self.sizeY = size
         self.actions = 4
         self.objects = []
         self.partial = partial
-        a = self.reset()
-        plt.imshow(a, interpolation="nearest")
+
+        self.num_goals = num_goals
+        self.num_fires = num_fires
+
+        self.reset()
+
+
 
     def reset(self):
+
         self.objects = []
-        hero = gameOb(self.newPosition(), 1, 1, 2, None, 'hero')
-        self.objects.append(hero)
-        bug = gameOb(self.newPosition(), 1, 1, 1, 1, 'goal')
-        self.objects.append(bug)
-        hole = gameOb(self.newPosition(), 1, 1, 0, -1, 'fire')
-        self.objects.append(hole)
-        bug2 = gameOb(self.newPosition(), 1, 1, 1, 1, 'goal')
-        self.objects.append(bug2)
-        hole2 = gameOb(self.newPosition(), 1, 1, 0, -1, 'fire')
-        self.objects.append(hole2)
-        bug3 = gameOb(self.newPosition(), 1, 1, 1, 1, 'goal')
-        self.objects.append(bug3)
-        bug4 = gameOb(self.newPosition(), 1, 1, 1, 1, 'goal')
-        self.objects.append(bug4)
-        state = self.renderEnv()
-        self.state = state
-        return state
+
+        self.objects.append(gameOb(self.newPosition(), 1, 1, 2, None, 'hero'))
+
+        for n in range(self.num_goals):
+            self.objects.append(gameOb(self.newPosition(), 1, 1, 1, 1, 'goal'))
+
+        for n in range(self.num_fires):
+            self.objects.append(gameOb(self.newPosition(), 1, 1, 0, -1, 'fire'))
+
+        self.state = self.renderEnv()
+        return self.state
 
     def moveChar(self, direction):
         # 0 - up, 1 - down, 2 - left, 3 - right
@@ -62,7 +62,7 @@ class gameEnv():
         if direction == 3 and hero.x <= self.sizeX - 2:
             hero.x += 1
         if hero.x == heroX and hero.y == heroY:
-            penalize = 0.0
+            penalize = -1
         self.objects[0] = hero
         return penalize
 
@@ -93,11 +93,11 @@ class gameEnv():
                 self.objects.remove(other)
                 if other.reward == 1:
                     self.objects.append(gameOb(self.newPosition(), 1, 1, 1, 1, 'goal'))
+                    return other.reward, False
                 else:
                     self.objects.append(gameOb(self.newPosition(), 1, 1, 0, -1, 'fire'))
-                return other.reward, False
-        if ended == False:
-            return 0.0, False
+                    return other.reward, True
+        return -0.1, False
 
     def renderEnv(self):
         # a = np.zeros([self.sizeY,self.sizeX,3])
@@ -118,14 +118,15 @@ class gameEnv():
         # d = np.array(Image.fromarray(a[:, :, 2]).resize(size=(84, 84)))
         # print(b.shape)
         # a = np.stack([b, c, d], axis=2)
-        a = (transform.resize(a, [84, 84, 3], order=0) * 255).astype(np.uint8)
+        a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)
         return a
 
     def step(self, action):
         penalty = self.moveChar(action)
         reward, done = self.checkGoal()
         state = self.renderEnv()
-        if reward == None:
+
+        if reward is None:
             print(done)
             print(reward)
             print(penalty)

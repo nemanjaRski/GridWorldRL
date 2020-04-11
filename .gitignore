@@ -74,3 +74,10 @@ fabric.properties
 .idea/modules.xml
 .idea/snake-rl.iml
 .idea/vcs.xml
+
+# Generated weights
+.dqn/models
+.dqn/old_models
+*.h5
+dqn/old_models/09-Apr-2020/params.txt
+dqn/old_models/10-Apr-2020/model.txt
