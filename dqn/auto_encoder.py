@@ -8,9 +8,7 @@ import matplotlib.image as mpimg
 import cv2
 
 from gridworld import gameEnv
-
-
-
+from coords import CoordinateChannel2D
 
 def create_data(number_of_samples):
 
@@ -24,7 +22,8 @@ def create_data(number_of_samples):
             state = env.reset()
         action = np.random.randint(4)
         next_state, reward, done = env.step(action)
-        images.append(state / 255)
+        images.append((state / 255).astype(np.uint8))
+        # images.append((state / 255))
         state = next_state
         num_step += 1
 
@@ -79,14 +78,14 @@ x = Conv2D(32, kernel_size=[5, 5], activation='relu', padding='valid', name="dec
 x = UpSampling2D((2, 2))(x)
 decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
 """
-
-x = Conv2D(16, (3, 3), activation='relu', padding='same')(input_img)
+x = CoordinateChannel2D()(input_img)
+x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
 x = MaxPooling2D((2, 2), padding='same')(x)
 x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
 x = MaxPooling2D((2, 2), padding='same')(x)
-encoded = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
+encoded = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
 
-x = Conv2D(8, (3, 3), activation='relu', padding='same')(encoded)
+x = Conv2D(32, (3, 3), activation='relu', padding='same')(encoded)
 x = UpSampling2D((2, 2))(x)
 x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
 x = UpSampling2D((2, 2))(x)
@@ -101,7 +100,7 @@ x_train, x_test = create_data(10000)
 x_train = np.reshape(x_train, (len(x_train), 84, 84, 3))  # adapt this if using `channels_first` image data format
 x_test = np.reshape(x_test, (len(x_test), 84, 84, 3))  # adapt this if using `channels_first` image data format
 
-load_model = False
+load_model = True
 main_weights_file = "auto_encoder.h5"
 
 if load_model is True:
