@@ -19,24 +19,33 @@ def process_state(state):
     return state
 
 
-class Qnetwork():
+class ConvNetwork():
     def __init__(self, final_layer_size):
 
-        self.inputs = Input(shape=[*process_state(env.state).shape], name="main_input")
+        self.inputs = Input(shape=[*process_state(env.state).shape], name="input")
 
         self.model = CoordinateChannel2D()(self.inputs)
-        
-        self.model = Conv2D(filters=16, kernel_size=[7, 7], strides=[4, 4], activation="relu",
-                            padding="same", name="conv1")(self.model)
+        self.model = Conv2D(16, (3, 3), activation='relu', padding='same', name='enc_1')(self.model)
+        self.model = MaxPooling2D((2, 2), padding='same', name='max_pool_1')(self.model)
+        self.model = Conv2D(8, (3, 3), activation='relu', padding='same', name='enc_2')(self.model)
+        self.model = MaxPooling2D((2, 2), padding='same', name='max_pool_2')(self.model)
+        self.model = Conv2D(final_layer_size, (3, 3), activation='relu', padding='same', name='enc_3')(self.model)
 
-        self.model = Conv2D(filters=32, kernel_size=[5, 5], strides=[4, 4], activation="relu",
-                            padding="same", name="conv2")(self.model)
+        self.model = Model(self.inputs, self.model)
+        self.model.compile(optimizer='adadelta', loss='binary_crossentropy')
 
-        self.model = Conv2D(filters=final_layer_size, kernel_size=[3, 3], strides=[1, 1], activation="relu",
-                            padding="same", name="conv3")(self.model)
+    def predict(self, state):
+        return self.model.predict(np.array(state))
 
-        self.stream_AC = Lambda(lambda layer: layer[:, :, :, :final_layer_size // 2], name="advantage")(self.model)
-        self.stream_VC = Lambda(lambda layer: layer[:, :, :, final_layer_size // 2:], name="value")(self.model)
+
+class QNetwork():
+
+    def __init__(self, final_layer_size):
+
+        self.inputs = Input(shape=[21, 21, final_layer_size], name='input')
+
+        self.stream_AC = Lambda(lambda layer: layer[:, :, :, :final_layer_size // 2], name="advantage")(self.inputs)
+        self.stream_VC = Lambda(lambda layer: layer[:, :, :, final_layer_size // 2:], name="value")(self.inputs)
 
         self.stream_AC = Flatten(name="advantage_flatten")(self.stream_AC)
         self.stream_VC = Flatten(name="value_flatten")(self.stream_VC)
@@ -52,13 +61,20 @@ class Qnetwork():
         self.model = Model(self.inputs, self.model)
         self.model.compile(optimizer=Adam(0.00025), loss="mse")
 
+    def predict(self, state):
+        return self.model.predict(np.array(state))
+
 
 def update_target_graph(main_graph, target_graph, tau):
     update_weights = (np.array(main_graph.get_weights()) * tau) + (np.array(target_graph.get_weights()) * (1 - tau))
     target_graph.set_weights(update_weights)
 
+def load_network_weights(neural_network, file_path, by_name = False):
+    if os.path.exists(file_path):
+        print("Loading weights from: " + file_path)
+        neural_network.model.load_weights(main_weights_file, by_name=by_name)
 
-class ExpierienceReplay:
+class ExpierienceReplay():
     def __init__(self, buffer_size=20000):
         self.buffer = []
         self.buffer_size = buffer_size
@@ -74,7 +90,7 @@ class ExpierienceReplay:
         return sample_output
 
 
-def test(q_network, num_episodes):
+def test(q_network, env, num_episodes):
     all_rewards = []
     for i in range(num_episodes):
 
@@ -86,7 +102,7 @@ def test(q_network, num_episodes):
         while not done and num_step < max_num_step:
             action = np.argmax(main_qn.model.predict(np.array([state])), axis=1)
             next_state, reward, done = env.step(action)
-            if reward < -0.1:
+            if reward < -0:
                 print("bad move")
             episode_reward += reward
             state = process_state(next_state)
@@ -97,37 +113,37 @@ def test(q_network, num_episodes):
     print(np.mean(all_rewards))
 
 
-def log_game(print_every, losses, num_epochs, total_steps, num_episode, rewards, prob_random):
+def log_game(print_every, losses, num_epochs, total_steps, num_episode, rewards,
+             prob_random, elapsed_env_time, elapsed_train_time, steps_since_last_print):
 
     mean_loss = np.mean(losses[-(print_every * num_epochs):])
     current_time = time.strftime("%H:%M:%S", time.localtime())
 
-    print("Time: {} Total steps: {} Num episode: {} Mean reward: {:0.4f} Prob random: {:0.4f}, Loss: {:0.04f}".format(
-        current_time, total_steps, num_episode, np.mean(rewards[-print_every:]), prob_random, mean_loss))
+    print("Time:{} Total steps:{} Episodes:{} Average Steps:{:0.2f} Mean reward:{:0.2f} Exploration:{:0.2f}, Loss:{:0.04f} Play:{:0.2f}s Train:{:0.2f}s".format(
+        current_time, total_steps, num_episode, steps_since_last_print / print_every,np.mean(rewards[-print_every:]), prob_random, mean_loss,
+        elapsed_env_time, elapsed_train_time))
 
 
-def plot_game(q_network):
+def plot_game(q_network, env):
 
-    f, axes = plt.subplots(nrows=max_num_step // 5, ncols=5, sharex=True, sharey=True, figsize=(15, 40))
+    f, axes = plt.subplots(nrows=max_num_step // 5, ncols=5, sharex=True, sharey=True, figsize=(25, 25))
     done = False
     num_step = 0
     sum_rewards = 0
-    original_state = env.reset()
-    state = process_state(original_state)
+    state = env.reset()
 
     while done is False and num_step < max_num_step:
 
-        q_values = main_qn.model.predict(np.array([state]))
+        conv_state = conv_n.predict([state])
+        q_values = q_network.model.predict(conv_state)
         action = np.argmax(q_values, axis=1)
         next_state, reward, done = env.step(action)
         sum_rewards += reward
-
         ax = axes.ravel()[num_step]
-        ax.imshow(original_state)
+        ax.imshow(state)
         ax.set_axis_off()
-        ax.set_title("a{} sum[{:.1f}]".format(action, sum_rewards))
-        original_state = next_state
-        state = process_state(next_state)
+        ax.set_title("|{:.1f} {:.1f} {:.1f} {:.1f} [{:.1f}]|".format(q_values[0][0], q_values[0][1], q_values[0][2], q_values[0][3], sum_rewards))
+        state = next_state
         num_step += 1
 
     plt.show()
@@ -138,11 +154,11 @@ num_epochs = 20
 update_freq = 5
 y = 0.99
 tau = 0.1
-prob_random_start = 0.1
+prob_random_start = 1
 prob_random_end = 0.1
-annealing_steps = 10000.
+annealing_steps = 8000.
 final_layer_size = 128
-num_episodes = 60000
+num_episodes = 10000
 pre_train_episodes = 100
 max_num_step = 50
 goal = 20
@@ -150,16 +166,20 @@ goal = 20
 #save/load weights
 load_model = True
 path = "./models"
-conv_weights_file = path + "/conv_weights.h5"
 main_weights_file = path + "/main_weights.h5"
 target_weights_file = path + "/target_weights.h5"
+conv_weights_file = path + "/conv_weights.h5"
+
 print_every = 100
 save_every = 1000
 
 K.clear_session()
 
-main_qn = Qnetwork(final_layer_size)
-target_qn = Qnetwork(final_layer_size)
+conv_n = ConvNetwork(final_layer_size)
+main_qn = QNetwork(final_layer_size)
+target_qn = QNetwork(final_layer_size)
+
+conv_n.model.summary()
 main_qn.model.summary()
 
 update_target_graph(main_qn.model, target_qn.model, 1)
@@ -175,17 +195,20 @@ losses = [0]
 total_steps = 0
 num_episode = 0
 
+
 if not os.path.exists(path):
     os.makedirs(path)
 
-if load_model is True:
-    if os.path.exists(main_weights_file):
-        print("Loading main weights")
-        main_qn.model.load_weights(main_weights_file)
-    if os.path.exists(target_weights_file):
-        print("Loading target weights")
-        target_qn.model.load_weights(target_weights_file)
+load_network_weights(conv_n, conv_weights_file, by_name=True)
 
+if load_model is True:
+    load_network_weights(main_qn, main_weights_file)
+    load_network_weights(target_qn, target_weights_file)
+
+elapsed_env_time = 0
+elapsed_train_time = 0
+steps_per_sec = 0
+steps_since_last_print = 0
 while num_episode < num_episodes:
     episode_buffer = ExpierienceReplay()
 
@@ -196,47 +219,67 @@ while num_episode < num_episodes:
     sum_rewards = 0
     cur_step = 0
 
+
+    start_env_time = time.time()
     while cur_step < max_num_step and not done:
         cur_step += 1
         total_steps += 1
-
+        steps_since_last_print += 1
         if np.random.rand() < prob_random or num_episode < pre_train_episodes:
             action = np.random.randint(env.actions)
         else:
-            action = np.argmax(main_qn.model.predict(np.array([state])))
+            conv_state = conv_n.predict([state])
+            q_values = main_qn.predict(conv_state)
+            action = np.argmax(q_values)
 
         next_state, reward, done = env.step(action)
         next_state = process_state(next_state)
 
         episode = np.array([[state], action, reward, [next_state], done])
         episode = episode.reshape(1, -1)
-
         episode_buffer.add(episode)
-
         sum_rewards += reward
-
         state = next_state
+    elapsed_env_time += (time.time() - start_env_time)
 
     if num_episode > pre_train_episodes:
         if prob_random > prob_random_end:
             prob_random -= prob_random_drop
 
+        train_batch = experience_replay.sample(batch_size)
+        train_state, train_action, train_reward, train_next_state, train_done = train_batch.T
+
+        start_train_time = time.time()
         if num_episode % update_freq == 0:
+
             for num_epoch in range(num_epochs):
 
                 train_batch = experience_replay.sample(batch_size)
                 train_state, train_action, train_reward, train_next_state, train_done = train_batch.T
-
                 train_action = train_action.astype(np.int)
 
+                
+                # combined_train_states = np.vstack(np.append(train_state, train_next_state))
+                # conv_combined_train_states = conv_n.predict(combined_train_states)
+                # target_q_combined = target_qn.model.predict(conv_combined_train_states)
+                # 
+                # target_q = target_q_combined[:batch_size]
+                # target_q_next_state = target_q_combined[batch_size:]
+                # 
+                # conv_train_state = conv_combined_train_states[:batch_size]
+                # conv_train_next_state = conv_combined_train_states[batch_size:]
+                
+
                 train_state = np.vstack(train_state)
+                conv_train_state = conv_n.predict(train_state)
+                target_q = target_qn.model.predict(conv_train_state)
+
                 train_next_state = np.vstack(train_next_state)
+                conv_train_next_state = conv_n.predict(train_next_state)
+                target_q_next_state = target_qn.model.predict(conv_train_next_state)
 
-                target_q = target_qn.model.predict(train_state)
-                target_q_next_state = target_qn.model.predict(train_next_state)
-
-                main_q_action = main_qn.model.predict(train_next_state)
-                train_next_state_action = np.argmax(main_q_action, axis=1)
+                main_q_values = main_qn.model.predict(conv_train_next_state)
+                train_next_state_action = np.argmax(main_q_values, axis=1)
                 train_next_state_action = train_next_state_action.astype(np.int)
 
                 train_gameover = train_done == 0
@@ -246,11 +289,11 @@ while num_episode < num_episodes:
                 actual_reward = train_reward + (y * train_next_state_values * train_gameover)
                 target_q[range(batch_size), train_action] = actual_reward
 
-                loss = main_qn.model.train_on_batch(train_state, target_q)
+                loss = main_qn.model.train_on_batch(conv_train_state, target_q)
                 losses.append(loss)
 
             update_target_graph(main_qn.model, target_qn.model, tau)
-
+        elapsed_train_time += (time.time() - start_train_time)
         if (num_episode + 1) % save_every == 0:
             main_qn.model.save_weights(main_weights_file)
             target_qn.model.save_weights(target_weights_file)
@@ -262,7 +305,12 @@ while num_episode < num_episodes:
     rewards.append(sum_rewards)
 
     if num_episode % print_every == 0:
-        log_game(print_every, losses, num_epochs, total_steps, num_episode, rewards, prob_random)
+
+        log_game(print_every, losses, num_epochs, total_steps, num_episode, rewards,
+                 prob_random, elapsed_env_time, elapsed_train_time, steps_since_last_print)
+        steps_since_last_print = 0
+        elapsed_env_time = 0
+        elapsed_train_time = 0
 
     if np.mean(rewards[-print_every:]) >= goal:
         print("Training complete!")
@@ -271,9 +319,9 @@ while num_episode < num_episodes:
 main_qn.model.save_weights(main_weights_file)
 target_qn.model.save_weights(target_weights_file)
 
+test(main_qn, env, 50)
 
-test(main_qn, 1000)
-plot_game(main_qn)
+plot_game(main_qn, env)
 
 
 

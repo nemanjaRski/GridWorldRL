@@ -13,7 +13,7 @@ from coords import CoordinateChannel2D
 def create_data(number_of_samples):
 
     images = []
-    env = gameEnv(partial=False, size=19)
+    env = gameEnv(partial=False, size=19, num_goals=15, num_fires=30 )
 
     num_step = 0
     state = env.reset()
@@ -23,7 +23,7 @@ def create_data(number_of_samples):
         action = np.random.randint(4)
         next_state, reward, done = env.step(action)
         images.append((state / 255).astype(np.uint8))
-        # images.append((state / 255))
+        #images.append((state / 255))
         state = next_state
         num_step += 1
 
@@ -45,67 +45,34 @@ def load_data(path):
 
 input_img = Input(shape=(84, 84, 3), name="input")  # adapt this if using `channels_first` image data format
 
-""" Original architecture
-x = Conv2D(32, kernel_size=[8, 8], strides=[4, 4], activation='relu', padding='valid', name="conv_1")(input_img)
-x = Conv2D(64, kernel_size=[4, 4], strides=[2, 2], activation='relu', padding='valid', name="conv_2")(x)
-x = Conv2D(64, kernel_size=[3, 3], strides=[1, 1], activation='relu', padding='valid', name="conv_3")(x)
-encoded = Conv2D(512, kernel_size=[7, 7], strides=[1, 1], activation='relu', padding='valid', name="conv_4")(x)
-
-x = Conv2D(512, kernel_size=[7, 7], strides=[1, 1], activation='relu', padding='valid', name="conv_4")(encoded)
-x = Conv2D(64, kernel_size=[3, 3], strides=[1, 1], activation='relu', padding='valid', name="conv_3")(x)
-x = Conv2D(64, kernel_size=[4, 4], strides=[2, 2], activation='relu', padding='valid', name="conv_2")(x)
-x = Conv2D(32, kernel_size=[8, 8], strides=[4, 4], activation='relu', padding='valid', name="conv_1")(x)
-decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
-"""
-
-""" First test example
-x = Conv2D(32, kernel_size=[5, 5], activation='relu', padding='valid', name="conv_1")(input_img)
-x = MaxPooling2D((2, 2), padding='valid')(x)
-x = Conv2D(64, kernel_size=[3, 3], activation='relu', padding='valid', name="conv_2")(x)
-x = MaxPooling2D((2, 2), padding='valid')(x)
-x = Conv2D(64, kernel_size=[3, 3], activation='relu', padding='valid', name="conv_3")(x)
-x = MaxPooling2D((2, 2), padding='valid')(x)
-x = Conv2D(64, kernel_size=[5, 5], activation='relu', padding='valid', name="conv_4")(x)
-encoded = MaxPooling2D((2, 2), padding='valid')(x)
-
-x = Conv2D(64, kernel_size=[5, 5], activation='relu', padding='valid', name="deconv_1")(encoded)
-x = UpSampling2D((2, 2))(x)
-x = Conv2D(64, kernel_size=[3, 3], activation='relu', padding='valid', name="deconv_2")(x)
-x = UpSampling2D((2, 2))(x)
-x = Conv2D(64, kernel_size=[3, 3], activation='relu', padding='valid', name="deconv_3")(x)
-x = UpSampling2D((2, 2))(x)
-x = Conv2D(32, kernel_size=[5, 5], activation='relu', padding='valid', name="deconv_4")(x)
-x = UpSampling2D((2, 2))(x)
-decoded = Conv2D(1, (3, 3), activation='sigmoid', padding='same')(x)
-"""
 x = CoordinateChannel2D()(input_img)
-x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
-x = MaxPooling2D((2, 2), padding='same')(x)
-x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
-x = MaxPooling2D((2, 2), padding='same')(x)
-encoded = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
+x = Conv2D(16, (3, 3), activation='relu', padding='same', name='enc_1')(x)
+x = MaxPooling2D((2, 2), padding='same', name='max_pool_1')(x)
+x = Conv2D(8, (3, 3), activation='relu', padding='same', name='enc_2')(x)
+x = MaxPooling2D((2, 2), padding='same', name='max_pool_2')(x)
+encoded = Conv2D(128, (3, 3), activation='relu', padding='same', name='enc_3')(x)
 
-x = Conv2D(32, (3, 3), activation='relu', padding='same')(encoded)
-x = UpSampling2D((2, 2))(x)
-x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
-x = UpSampling2D((2, 2))(x)
-x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
-decoded = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
+x = Conv2D(128, (3, 3), activation='relu', padding='same', name='dec_3')(encoded)
+x = UpSampling2D((2, 2), name='up_sample_3')(x)
+x = Conv2D(8, (3, 3), activation='relu', padding='same', name='dec_2')(x)
+x = UpSampling2D((2, 2), name='up_sample_2')(x)
+x = Conv2D(16, (3, 3), activation='relu', padding='same', name='up_sample_1')(x)
+decoded = Conv2D(3, (3, 3), activation='sigmoid', padding='same', name='dec_1')(x)
 
 autoencoder = Model(input_img, decoded)
 autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
 autoencoder.summary()
 
-x_train, x_test = create_data(10000)
+x_train, x_test = create_data(20000)
 x_train = np.reshape(x_train, (len(x_train), 84, 84, 3))  # adapt this if using `channels_first` image data format
 x_test = np.reshape(x_test, (len(x_test), 84, 84, 3))  # adapt this if using `channels_first` image data format
 
-load_model = True
-main_weights_file = "auto_encoder.h5"
+load_model = False
+main_weights_file = "models/conv_weights.h5"
 
 if load_model is True:
     if os.path.exists(main_weights_file):
-        print("Loading maina weights")
+        print("Loading main weights")
         autoencoder.load_weights(main_weights_file)
 else:
     autoencoder.fit(x_train, x_train,
@@ -113,7 +80,7 @@ else:
                     batch_size=128,
                     shuffle=True,
                     validation_data=(x_test, x_test))
-    autoencoder.save_weights("auto_encoder.h5")
+    autoencoder.save_weights("models/auto_encoder.h5")
 
 decoded_imgs = autoencoder.predict(x_test)
 print(np.array(decoded_imgs).shape)

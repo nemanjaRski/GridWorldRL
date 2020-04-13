@@ -1,0 +1,5 @@
+2m steps
+8.5324 mean reward
+
+5m steps
+after - i think 8.7 mean reward
