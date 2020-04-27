@@ -8,13 +8,26 @@ import itertools
 import tf_slim as slim
 from gridworld import gameEnv
 from helpers import *
-
+import time
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 
 
+def log_game(print_every, green, red, stuck, num_episode, rewards, prob_random):
+
+    mean_green = np.mean(green[-print_every:])
+    mean_red = np.mean(red[-print_every:])
+    mean_stuck = np.mean(stuck[-print_every:])
+    mean_reward = np.mean(rewards[-print_every:])
+    current_time = time.strftime("%H:%M:%S", time.localtime())
+
+    print("Time: {} Num episode: {} Mean reward: {:0.4f} Prob random: {:0.4f}, Green: {:0.04f} , Red: {:0.04f} , Stuck: {:0.04f}".format(
+                current_time, num_episode, mean_reward, prob_random, mean_green, mean_red, mean_stuck))
+
 
 env = gameEnv(partial=True, size=9, num_goals=4, num_fires=2)
+
 
 class Qnetwork():
     def __init__(self, h_size, rnn_cell, myScope):
@@ -101,22 +114,25 @@ class experience_buffer():
         sampledTraces = np.array(sampledTraces)
         return np.reshape(sampledTraces, [batch_size * trace_length, 5])
 
-#Setting the training parameters
-batch_size = 4 #How many experience traces to use for each training step.
-trace_length = 8 #How long each experience trace will be when training
-update_freq = 5 #How often to perform a training step.
-y = .99 #Discount factor on the target Q-values
-startE = 1 #Starting chance of random action
-endE = 0.1 #Final chance of random action
-anneling_steps = 10000 #How many steps of training to reduce startE to endE.
-num_episodes = 10000 #How many episodes of game environment to train network with.
-pre_train_steps = 1000 #How many steps of random actions before training begins.
-load_model = False #Whether to load a saved model.
-path = "./drqn" #The path to save our model to.
-h_size = 512 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-max_epLength = 50 #The max allowed length of our episode.
-time_per_step = 1 #Length of each step used in gif creation
-summaryLength = 2000 #Number of epidoes to periodically save for analysis
+
+# Setting the training parameters
+batch_size = 4  # How many experience traces to use for each training step.
+trace_length = 8  # How long each experience trace will be when training
+update_freq = 5  # How often to perform a training step.
+y = .99  # Discount factor on the target Q-values
+startE = 1  # Starting chance of random action
+endE = 0.1  # Final chance of random action
+anneling_steps = 10000  # How many steps of training to reduce startE to endE.
+num_episodes = 100  # How many episodes of game environment to train network with.
+pre_train_steps = 1000  # How many steps of random actions before training begins.
+load_model = False  # Whether to load a saved model.
+path = "./drqn"  # The path to save our model to.
+h_size = 512  # The size of the final convolutional layer before splitting it into Advantage and Value streams.
+max_epLength = 50  # The max allowed length of our episode.
+time_per_step = 1  # Length of each step used in gif creation
+summaryLength = 10  # Number of epidoes to periodically save for analysis
+save_gif_freq = 2000
+save_model_freq = 1000
 tau = 0.001
 
 tf.reset_default_graph()
@@ -143,6 +159,10 @@ stepDrop = (startE - endE) / anneling_steps
 # create lists to contain total rewards and steps per episode
 jList = []
 rList = []
+red_list = []
+green_list = []
+stuck_list = []
+losses = []
 total_steps = 0
 
 # Make a path for our model to be saved in.
@@ -170,6 +190,9 @@ with tf.Session() as sess:
         s = processState(sP)
         d = False
         rAll = 0
+        number_of_red = 0
+        number_of_green = 0
+        number_of_stuck = 0
         j = 0
         state = (np.zeros([1, h_size]), np.zeros([1, h_size]))  # Reset the recurrent layer's hidden state
         # The Q-Network
@@ -218,6 +241,12 @@ with tf.Session() as sess:
                                         mainQN.actions: trainBatch[:, 1], mainQN.trainLength: trace_length, \
                                         mainQN.state_in: state_train, mainQN.batch_size: batch_size})
             rAll += r
+            if r == 1:
+                number_of_green += 1
+            elif r == -1:
+                number_of_red += 1
+            elif r < -1:
+                number_of_stuck += 1
             s = s1
             sP = s1P
             state = state1
@@ -230,18 +259,20 @@ with tf.Session() as sess:
         myBuffer.add(episodeBuffer)
         jList.append(j)
         rList.append(rAll)
+        red_list.append(number_of_red)
+        green_list.append(number_of_green)
+        stuck_list.append(number_of_stuck)
 
         # Periodically save the model.
-        if i % 1000 == 0 and i != 0:
+        if i % save_model_freq == 0 and i != 0:
             saver.save(sess, path + '/model-' + str(i) + '.cptk')
             print("Saved Model")
         if len(rList) % summaryLength == 0 and len(rList) != 0:
-            print(total_steps, np.mean(rList[-summaryLength:]), e)
+            log_game(summaryLength, green_list, red_list, stuck_list, i + 1, rList, e)
+        if len(rList) % save_gif_freq == 0 and len(rList) != 0:
             saveToCenter(i, rList, jList, np.reshape(np.array(episodeBuffer), [len(episodeBuffer), 5]), \
-                        summaryLength, h_size, sess, mainQN, time_per_step)
+                         summaryLength, h_size, sess, mainQN, time_per_step)
     saver.save(sess, path + '/model-' + str(i) + '.cptk')
-
-
 
     e = 0.01  # The chance of chosing a random action
     num_episodes = 1000  # How many episodes of game environment to train network with.
