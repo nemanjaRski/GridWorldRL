@@ -1,22 +1,27 @@
 import numpy as np
-import random
-import tensorflow as tf
-import matplotlib.pyplot as plt
-import scipy.misc
-import os
 import csv
-import itertools
-import tf_slim as slim
-import moviepy.editor as mpy
+import time
 
 
 # This is a simple function to reshape our game frames.
-def processState(state1):
+def process_state(state1):
     return np.reshape(state1, [21168])
 
 
+def log_game(print_every, green, red, stuck, num_episode, rewards, prob_random):
+    mean_green = np.mean(green[-print_every:])
+    mean_red = np.mean(red[-print_every:])
+    mean_stuck = np.mean(stuck[-print_every:])
+    mean_reward = np.mean(rewards[-print_every:])
+    current_time = time.strftime("%H:%M:%S", time.localtime())
+
+    print(
+        "Time: {} Num episode: {} Mean reward: {:0.4f} Prob random: {:0.4f}, Green: {:0.04f} , Red: {:0.04f} , Stuck: {:0.04f}".format(
+            current_time, num_episode, mean_reward, prob_random, mean_green, mean_red, mean_stuck))
+
+
 # These functions allows us to update the parameters of our target network with those of the primary network.
-def updateTargetGraph(tfVars, tau):
+def update_target_graph(tfVars, tau):
     total_vars = len(tfVars)
     op_holder = []
     for idx, var in enumerate(tfVars[0:total_vars // 2]):
@@ -25,21 +30,21 @@ def updateTargetGraph(tfVars, tau):
     return op_holder
 
 
-def updateTarget(op_holder, sess):
+def update_target(op_holder, sess):
     for op in op_holder:
         sess.run(op)
 
 
 # Record performance metrics and episode logs for the Control Center.
-def saveToCenter(i, rList, jList, bufferArray, summaryLength, h_size, sess, mainQN, time_per_step):
+def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, mainQN, time_per_step):
     with open('./Center/log.csv', 'a') as myfile:
         state_display = (np.zeros([1, h_size]), np.zeros([1, h_size]))
         imagesS = []
         for idx, z in enumerate(np.vstack(bufferArray[:, 0])):
-            img, state_display = sess.run([mainQN.salience, mainQN.rnn_state], \
+            img, state_display = sess.run([mainQN.salience, mainQN.previous_rnn_state], \
                                           feed_dict={
-                                              mainQN.scalarInput: np.reshape(bufferArray[idx, 0], [1, 21168]) / 255.0, \
-                                              mainQN.trainLength: 1, mainQN.state_in: state_display,
+                                              mainQN.scalar_input: np.reshape(bufferArray[idx, 0], [1, 21168]) / 255.0, \
+                                              mainQN.train_length: 1, mainQN.rnn_state_in: state_display,
                                               mainQN.batch_size: 1})
             imagesS.append(img)
         imagesS = (imagesS - np.min(imagesS)) / (np.max(imagesS) - np.min(imagesS))
@@ -65,9 +70,9 @@ def saveToCenter(i, rList, jList, bufferArray, summaryLength, h_size, sess, main
         state_train = (np.zeros([1, h_size]), np.zeros([1, h_size]))
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow(["ACTION", "REWARD", "A0", "A1", 'A2', 'A3', 'V'])
-        a, v = sess.run([mainQN.Advantage, mainQN.Value], \
-                        feed_dict={mainQN.scalarInput: np.vstack(bufferArray[:, 0]) / 255.0,
-                                   mainQN.trainLength: len(bufferArray), mainQN.state_in: state_train,
+        a, v = sess.run([mainQN.advantage, mainQN.value], \
+                        feed_dict={mainQN.scalar_input: np.vstack(bufferArray[:, 0]) / 255.0,
+                                   mainQN.train_length: len(bufferArray), mainQN.rnn_state_in: state_train,
                                    mainQN.batch_size: 1})
         wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], a[:, 0], a[:, 1], a[:, 2], a[:, 3], v[:, 0]))
 
