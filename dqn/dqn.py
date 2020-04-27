@@ -11,7 +11,7 @@ from gridworld import gameEnv
 import matplotlib.pyplot as plt
 from coords import CoordinateChannel2D
 
-env = gameEnv(partial=False, size=19, num_goals=15, num_fires=30)
+env = gameEnv(partial=False, size=5, num_goals=4, num_fires=2)
 
 
 def process_state(state):
@@ -25,7 +25,7 @@ class Qnetwork():
         self.inputs = Input(shape=[*process_state(env.state).shape], name="main_input")
 
         self.model = CoordinateChannel2D()(self.inputs)
-        
+
         self.model = Conv2D(filters=16, kernel_size=[7, 7], strides=[4, 4], activation="relu",
                             padding="same", name="conv1")(self.model)
 
@@ -148,7 +148,7 @@ max_num_step = 50
 goal = 20
 
 #save/load weights
-load_model = True
+load_model = False
 path = "./models"
 conv_weights_file = path + "/conv_weights.h5"
 main_weights_file = path + "/main_weights.h5"

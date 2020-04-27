@@ -13,7 +13,7 @@ from coords import CoordinateChannel2D
 def create_data(number_of_samples):
 
     images = []
-    env = gameEnv(partial=False, size=19, num_goals=15, num_fires=30 )
+    env = gameEnv(partial=False, size=5, num_goals=4, num_fires=2)
 
     num_step = 0
     state = env.reset()
@@ -22,7 +22,7 @@ def create_data(number_of_samples):
             state = env.reset()
         action = np.random.randint(4)
         next_state, reward, done = env.step(action)
-        images.append((state / 255).astype(np.uint8))
+        images.append((state // 255).astype(np.uint8))
         #images.append((state / 255))
         state = next_state
         num_step += 1
@@ -63,7 +63,7 @@ autoencoder = Model(input_img, decoded)
 autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
 autoencoder.summary()
 
-x_train, x_test = create_data(20000)
+x_train, x_test = create_data(10000)
 x_train = np.reshape(x_train, (len(x_train), 84, 84, 3))  # adapt this if using `channels_first` image data format
 x_test = np.reshape(x_test, (len(x_test), 84, 84, 3))  # adapt this if using `channels_first` image data format
 

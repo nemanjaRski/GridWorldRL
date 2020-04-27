@@ -1,9 +1,14 @@
 from __future__ import division
-import numpy as np
+
 from keras.models import Model
 from keras.layers import Conv2D, Reshape, Dense, Input, Flatten, Lambda, TimeDistributed, LSTM
-import keras.backend as K
 from keras.optimizers import Adam
+import keras.backend as K
+
+import numpy as np
+import random
+from random import choice
+
 import os
 import time
 
@@ -11,7 +16,7 @@ from gridworld import gameEnv
 import matplotlib.pyplot as plt
 from coords import CoordinateChannel2D
 
-env = gameEnv(partial=True, size=5, num_goals=4, num_fires=2)
+env = gameEnv(partial=True, size=10, num_goals=4, num_fires=2)
 
 
 def process_state(state):
@@ -31,7 +36,7 @@ class Qnetwork():
                             padding="same", name="conv2")(self.model)
         self.model = Conv2D(filters=final_layer_size, kernel_size=3, strides=1, activation="relu",
                             padding="same", name="conv3")(self.model)
-        self.model = Reshape([36, 128])(self.model)
+        self.model = Reshape([36, final_layer_size])(self.model)
         self.model = LSTM(units=final_layer_size, activation="tanh")(self.model)
 
         # self.stream_AC = Lambda(lambda layer: layer[:, :, :, :final_layer_size // 2], name="advantage")(self.model)
@@ -59,20 +64,40 @@ def update_target_graph(main_graph, target_graph, tau):
     target_graph.set_weights(update_weights)
 
 
-class ExpierienceReplay:
-    def __init__(self, buffer_size=20000):
+# class ExpierienceReplay:
+#     def __init__(self, buffer_size=20000):
+#         self.buffer = []
+#         self.buffer_size = buffer_size
+#
+#     def add(self, experience):
+#         self.buffer.extend(experience)
+#         self.buffer = self.buffer[-self.buffer_size:]
+#
+#     def sample(self, size):
+#         sample_idxs = np.random.randint(len(self.buffer), size=size)
+#         sample_output = [self.buffer[idx] for idx in sample_idxs]
+#         sample_output = np.reshape(sample_output, (size, -1))
+#         return sample_output
+
+class ExperienceReplay:
+
+    def __init__(self, buffer_size=1000):
         self.buffer = []
         self.buffer_size = buffer_size
 
-    def add(self, experience):
-        self.buffer.extend(experience)
-        self.buffer = self.buffer[-self.buffer_size:]
+    def add(self, episode_experience):
+        if len(self.buffer) + 1 >= self.buffer_size:
+            self.buffer[0:(1 + len(self.buffer)) - self.buffer_size] = []
+        self.buffer.append(episode_experience)
 
-    def sample(self, size):
-        sample_idxs = np.random.randint(len(self.buffer), size=size)
-        sample_output = [self.buffer[idx] for idx in sample_idxs]
-        sample_output = np.reshape(sample_output, (size, -1))
-        return sample_output
+    def sample(self, size, trace_length):
+        sampled_episodes = random.sample(self.buffer, batch_size)
+        sampledTraces = []
+        for episode in sampled_episodes:
+            point = np.random.randint(0, len(episode) + 1 - trace_length)
+            sampledTraces.append(episode[point:point + trace_length])
+        sampledTraces = np.array(sampledTraces)
+        return sampledTraces
 
 
 def test(q_network, num_episodes):
@@ -133,6 +158,7 @@ def plot_game(q_network):
 
 # hyperparameters
 batch_size = 32
+trace_length = 8
 num_epochs = 20
 update_freq = 5
 y = 0.99
@@ -147,8 +173,8 @@ max_num_step = 50
 goal = 20
 
 # save/load weights
-load_model = True
-path = "./models"
+load_model = False
+path = "./models/drqn/"
 conv_weights_file = path + "/conv_weights.h5"
 main_weights_file = path + "/main_weights.h5"
 target_weights_file = path + "/target_weights.h5"
@@ -163,7 +189,7 @@ main_qn.model.summary()
 
 update_target_graph(main_qn.model, target_qn.model, 1)
 
-experience_replay = ExpierienceReplay()
+experience_replay = ExperienceReplay()
 
 prob_random = prob_random_start
 prob_random_drop = (prob_random_start - prob_random_end) / annealing_steps
@@ -186,7 +212,7 @@ if load_model is True:
         target_qn.model.load_weights(target_weights_file)
 
 while num_episode < num_episodes:
-    episode_buffer = ExpierienceReplay()
+    episode_buffer = ExperienceReplay()
 
     state = env.reset()
     state = process_state(state)
@@ -222,7 +248,8 @@ while num_episode < num_episodes:
 
         if num_episode % update_freq == 0:
             for num_epoch in range(num_epochs):
-                train_batch = experience_replay.sample(batch_size)
+
+                train_batch = experience_replay.sample(batch_size, trace_length)
                 train_state, train_action, train_reward, train_next_state, train_done = train_batch.T
 
                 train_action = train_action.astype(np.int)
@@ -239,10 +266,10 @@ while num_episode < num_episodes:
 
                 train_gameover = train_done == 0
 
-                train_next_state_values = target_q_next_state[range(batch_size), train_next_state_action]
+                train_next_state_values = target_q_next_state[range(batch_size * trace_length), train_next_state_action]
 
                 actual_reward = train_reward + (y * train_next_state_values * train_gameover)
-                target_q[range(batch_size), train_action] = actual_reward
+                target_q[range(batch_size * trace_length), train_action] = actual_reward
 
                 loss = main_qn.model.train_on_batch(train_state, target_q)
                 losses.append(loss)
@@ -269,7 +296,7 @@ while num_episode < num_episodes:
 main_qn.model.save_weights(main_weights_file)
 target_qn.model.save_weights(target_weights_file)
 
-test(main_qn, 1000)
+test(main_qn, 10)
 plot_game(main_qn)
 
 
