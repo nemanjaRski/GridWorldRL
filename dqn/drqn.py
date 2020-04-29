@@ -12,11 +12,11 @@ from random import choice
 import os
 import time
 
-from gridworld import gameEnv
+from gridworld import GameEnv
 import matplotlib.pyplot as plt
 from coords import CoordinateChannel2D
 
-env = gameEnv(partial=True, size=10, num_goals=4, num_fires=2)
+env = GameEnv(partial=True, size=10, num_goals=4, num_fires=2)
 
 
 def process_state(state):

@@ -4,11 +4,8 @@ tf.disable_v2_behavior()
 
 
 class Qnetwork:
-    def __init__(self, num_features, rnn_cell, scope_name, num_actions, learning_rate):
-        # The network recieves a frame from the game, flattened into an array.
-        # It then resizes it and processes it through four convolutional layers.
-        self.scalar_input = tf.placeholder(shape=[None, 21168], dtype=tf.float32)
-        self.image_in = tf.reshape(self.scalar_input, shape=[-1, 84, 84, 3])
+    def __init__(self, num_features, rnn_cell, scope_name, num_actions, state_shape, learning_rate):
+        self.image_in = tf.placeholder(shape=[None, *state_shape], dtype=tf.float32)
         self.conv1 = slim.convolution2d(
             inputs=self.image_in, num_outputs=32,
             kernel_size=[8, 8], stride=[4, 4], padding='VALID',

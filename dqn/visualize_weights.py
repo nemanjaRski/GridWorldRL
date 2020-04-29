@@ -8,8 +8,8 @@ from collections import Counter
 from keras.models import model_from_json
 from PIL import Image
 
-from gridworld import gameEnv, gameOb
-env = gameEnv(partial=False, size=19)
+from gridworld import GameEnv, GameOb
+env = GameEnv(partial=False, size=19)
 
 num_step = 0
 max_num_step = 10000

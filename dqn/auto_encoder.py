@@ -7,13 +7,13 @@ import numpy as np
 import matplotlib.image as mpimg
 import cv2
 
-from gridworld import gameEnv
+from gridworld import GameEnv
 from coords import CoordinateChannel2D
 
 def create_data(number_of_samples):
 
     images = []
-    env = gameEnv(partial=False, size=5, num_goals=4, num_fires=2)
+    env = GameEnv(partial=False, size=5, num_goals=4, num_fires=2)
 
     num_step = 0
     state = env.reset()

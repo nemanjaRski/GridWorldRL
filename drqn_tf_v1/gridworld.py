@@ -1,12 +1,9 @@
 import numpy as np
-import random
 import itertools
-import scipy.misc
-import matplotlib.pyplot as plt
 import skimage.transform as transform
 
 
-class gameOb():
+class GameOb:
     def __init__(self, coordinates, size, intensity, channel, reward, name):
         self.x = coordinates[0]
         self.y = coordinates[1]
@@ -17,7 +14,7 @@ class gameOb():
         self.name = name
 
 
-class gameEnv():
+class GameEnv:
     def __init__(self, partial, size, num_goals=20, num_fires=10):
         self.sizeX = size
         self.sizeY = size
@@ -34,23 +31,23 @@ class gameEnv():
 
         self.objects = []
 
-        self.objects.append(gameOb(self.newPosition(), 1, 1, 2, None, 'hero'))
+        self.objects.append(GameOb(self.new_position(), 1, 1, 2, None, 'hero'))
 
         for n in range(self.num_goals):
-            self.objects.append(gameOb(self.newPosition(), 1, 1, 1, 1, 'goal'))
+            self.objects.append(GameOb(self.new_position(), 1, 1, 1, 1, 'goal'))
 
         for n in range(self.num_fires):
-            self.objects.append(gameOb(self.newPosition(), 1, 1, 0, -1, 'fire'))
+            self.objects.append(GameOb(self.new_position(), 1, 1, 0, -1, 'fire'))
 
-        self.state = self.renderEnv()
+        self.state = self.render_env()
         return self.state
 
-    def moveChar(self, direction):
+    def move_char(self, direction):
         # 0 - up, 1 - down, 2 - left, 3 - right
         hero = self.objects[0]
 
-        heroX = hero.x
-        heroY = hero.y
+        hero_x = hero.x
+        hero_y = hero.y
         penalize = 0.
 
         if direction == 0 and hero.y >= 1:
@@ -61,34 +58,34 @@ class gameEnv():
             hero.x -= 1
         if direction == 3 and hero.x <= self.sizeX - 2:
             hero.x += 1
-        if hero.x == heroX and hero.y == heroY:
+        if hero.x == hero_x and hero.y == hero_y:
             penalize = -1
 
         self.objects[0] = hero
 
         return penalize
 
-    def newPosition(self):
+    def new_position(self):
 
         iterables = [range(self.sizeX), range(self.sizeY)]
         points = []
-        currentPositions = []
+        current_positions = []
 
         for t in itertools.product(*iterables):
             points.append(t)
 
         for objectA in self.objects:
-            if (objectA.x, objectA.y) not in currentPositions:
-                currentPositions.append((objectA.x, objectA.y))
+            if (objectA.x, objectA.y) not in current_positions:
+                current_positions.append((objectA.x, objectA.y))
 
-        for pos in currentPositions:
+        for pos in current_positions:
             points.remove(pos)
 
         location = np.random.choice(range(len(points)), replace=False)
 
         return points[location]
 
-    def checkGoal(self):
+    def check_goal(self):
         others = []
         for obj in self.objects:
             if obj.name == 'hero':
@@ -100,14 +97,14 @@ class gameEnv():
             if hero.x == other.x and hero.y == other.y:
                 self.objects.remove(other)
                 if other.reward == 1:
-                    self.objects.append(gameOb(self.newPosition(), 1, 1, 1, 1, 'goal'))
+                    self.objects.append(GameOb(self.new_position(), 1, 1, 1, 1, 'goal'))
                     return other.reward, False
                 else:
-                    self.objects.append(gameOb(self.newPosition(), 1, 1, 0, -1, 'fire'))
+                    self.objects.append(GameOb(self.new_position(), 1, 1, 0, -1, 'fire'))
                     return other.reward, False
         return -0.1, False
 
-    def renderEnv(self, print=False):
+    def render_env(self, for_print=False):
         # a = np.zeros([self.sizeY,self.sizeX,3])
         a = np.ones([self.sizeY + 2, self.sizeX + 2, 3])
         a[1:-1, 1:-1, :] = 0
@@ -116,25 +113,19 @@ class gameEnv():
             a[item.y + 1:item.y + item.size + 1, item.x + 1:item.x + item.size + 1, item.channel] = item.intensity
             if item.name == 'hero':
                 hero = item
-        if self.partial == True:
+        if self.partial:
             a = a[hero.y:hero.y + 3, hero.x:hero.x + 3, :]
-        # b = scipy.misc.imresize(a[:,:,0],[84,84,1],interp='nearest') np.array(Image.fromarray(a[:,:,0]).resize())
-        # c = scipy.misc.imresize(a[:,:,1],[84,84,1],interp='nearest')
-        # d = scipy.misc.imresize(a[:,:,2],[84,84,1],interp='nearest')
-        # b = np.array(Image.fromarray(a[:, :, 0]).resize(size=(84, 84)))
-        # c = np.array(Image.fromarray(a[:, :, 1]).resize(size=(84, 84)))
-        # d = np.array(Image.fromarray(a[:, :, 2]).resize(size=(84, 84)))
-        # print(b.shape)
-        # a = np.stack([b, c, d], axis=2)
-
-        a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)
+        if for_print:
+            a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)
+        else:
+            a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True)).astype(np.uint8)
 
         return a
 
     def step(self, action):
-        penalty = self.moveChar(action)
-        reward, done = self.checkGoal()
-        state = self.renderEnv()
+        penalty = self.move_char(action)
+        reward, done = self.check_goal()
+        state = self.render_env()
 
         if reward is None:
             print(done)

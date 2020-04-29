@@ -1,13 +1,15 @@
 from network import Qnetwork
 from experience_buffer import experience_buffer
 from helpers import *
-from gridworld import gameEnv
+from gridworld import GameEnv
 import os
 import tensorflow.compat.v1 as tf
 
 """Game environment"""
-env = gameEnv(partial=True, size=9, num_goals=4, num_fires=2)
+env = GameEnv(partial=True, size=9, num_goals=4, num_fires=2)
 action_space_size = env.actions
+state_shape = env.reset().shape
+
 
 """Training parameters"""
 batch_size = 4
@@ -55,8 +57,8 @@ rnn_cell_main = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=final_layer_size, st
 rnn_cell_target = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=final_layer_size, state_is_tuple=True)
 
 """Create main and target network"""
-main_q_network = Qnetwork(final_layer_size, rnn_cell_main, 'main', action_space_size, learning_rate)
-target_q_network = Qnetwork(final_layer_size, rnn_cell_target, 'target', action_space_size, learning_rate)
+main_q_network = Qnetwork(final_layer_size, rnn_cell_main, 'main', action_space_size, state_shape, learning_rate)
+target_q_network = Qnetwork(final_layer_size, rnn_cell_target, 'target', action_space_size, state_shape, learning_rate)
 
 init = tf.global_variables_initializer()
 
@@ -87,7 +89,6 @@ with tf.Session() as sess:
     while current_episode <= num_episodes:
         episode_buffer = []
         state = env.reset()
-        state_processed = process_state(state)
         done = False
         episode_reward = 0
         num_of_red = 0
@@ -100,23 +101,22 @@ with tf.Session() as sess:
         while current_step < max_ep_length:
             if np.random.rand(1) < exploration or total_steps < pre_train_steps:
                 next_rnn_state = sess.run(main_q_network.rnn_state,
-                                          feed_dict={main_q_network.scalar_input: [state_processed / 255.0],
+                                          feed_dict={main_q_network.image_in: [state],
                                                      main_q_network.train_length: 1,
                                                      main_q_network.rnn_state_in: previous_rnn_state,
                                                      main_q_network.batch_size: 1})
                 action = np.random.randint(0, 4)
             else:
                 action, next_rnn_state = sess.run([main_q_network.predict, main_q_network.rnn_state],
-                                                  feed_dict={main_q_network.scalar_input: [state_processed / 255.0],
+                                                  feed_dict={main_q_network.image_in: [state],
                                                              main_q_network.train_length: 1,
                                                              main_q_network.rnn_state_in: previous_rnn_state,
                                                              main_q_network.batch_size: 1})
                 action = action[0]
             next_state, reward, done = env.step(action)
-            next_state_processed = process_state(next_state)
             total_steps += 1
             episode_buffer.append(
-                np.reshape(np.array([state_processed, action, reward, next_state_processed, done]), [1, 5]))
+                np.reshape(np.array([state, action, reward, next_state, done]), [1, 5]))
             if total_steps > pre_train_steps:
                 if exploration > exploration_end:
                     exploration -= exploration_drop_rate
@@ -128,13 +128,12 @@ with tf.Session() as sess:
                         np.zeros([batch_size, final_layer_size]), np.zeros([batch_size, final_layer_size]))
 
                     train_batch = exp_buffer.sample(batch_size, trace_length)
-
                     main_actions = sess.run(main_q_network.predict, feed_dict={
-                        main_q_network.scalar_input: np.vstack(train_batch[:, 3] / 255.0),
+                        main_q_network.image_in: np.array([*train_batch[:, 3]]),
                         main_q_network.train_length: trace_length, main_q_network.rnn_state_in: rnn_state_train,
                         main_q_network.batch_size: batch_size})
                     target_q_values = sess.run(target_q_network.q_out, feed_dict={
-                        target_q_network.scalar_input: np.vstack(train_batch[:, 3] / 255.0),
+                        target_q_network.image_in: np.array([*train_batch[:, 3]]),
                         target_q_network.train_length: trace_length, target_q_network.rnn_state_in: rnn_state_train,
                         target_q_network.batch_size: batch_size})
                     end_multiplier = -(train_batch[:, 4] - 1)
@@ -142,7 +141,7 @@ with tf.Session() as sess:
                     target_q = train_batch[:, 2] + (y * double_q * end_multiplier)
                     # Update the network with our target values.
                     sess.run(main_q_network.update_model,
-                             feed_dict={main_q_network.scalar_input: np.vstack(train_batch[:, 0] / 255.0),
+                             feed_dict={main_q_network.image_in: np.array([*train_batch[:, 0]]),
                                         main_q_network.target_q: target_q,
                                         main_q_network.actions: train_batch[:, 1],
                                         main_q_network.train_length: trace_length,
@@ -150,10 +149,9 @@ with tf.Session() as sess:
                                         main_q_network.batch_size: batch_size})
             episode_reward += reward
 
-            num_of_green += (reward == 1) * 1
-            num_of_red += (reward == -1) * 1
-            num_of_stuck += (reward < -1) * 1
-            state_processed = next_state_processed
+            num_of_green += int(reward == 1)
+            num_of_red += int(reward == -1)
+            num_of_stuck += int(reward < -1)
             state = next_state
             previous_rnn_state = next_rnn_state
             current_step += 1

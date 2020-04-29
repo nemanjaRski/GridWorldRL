@@ -7,11 +7,11 @@ from keras.optimizers import Adam
 import os
 import time
 
-from gridworld import gameEnv
+from gridworld import GameEnv
 import matplotlib.pyplot as plt
 from coords import CoordinateChannel2D
 
-env = gameEnv(partial=False, size=5, num_goals=4, num_fires=2)
+env = GameEnv(partial=False, size=5, num_goals=4, num_fires=2)
 
 
 def process_state(state):

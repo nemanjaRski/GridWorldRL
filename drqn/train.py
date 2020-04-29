@@ -1,4 +1,4 @@
-from gridworld import gameEnv
+from gridworld import GameEnv
 from agent import DRQNAgent
 from networks import Networks
 
@@ -17,7 +17,7 @@ def log_game(print_every, losses, num_episode, rewards, prob_random):
 
 def train():
 
-    env = gameEnv(partial=False, size=5, num_goals=4, num_fires=2)
+    env = GameEnv(partial=False, size=5, num_goals=4, num_fires=2)
 
     action_size = env.actions # 4
     state_size = env.reset().shape # 84,84,3

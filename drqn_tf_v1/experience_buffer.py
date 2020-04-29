@@ -19,4 +19,5 @@ class experience_buffer:
             point = np.random.randint(0, len(episode) + 1 - sample_trace_length)
             sampled_traces.append(episode[point:point + sample_trace_length])
         sampled_traces = np.array(sampled_traces)
+
         return np.reshape(sampled_traces, [sample_batch_size * sample_trace_length, 5])
