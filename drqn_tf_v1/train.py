@@ -36,7 +36,8 @@ exploration_drop_rate = (exploration_start - exploration_end) / exploration_deca
 
 """Debug and save parameters"""
 load_model = False
-path = "./drqn_weights"
+path_weights = "./drqn_weights"
+path_results = "./drqn_train_results"
 time_per_step = 1  # Length of each step used in gif creation
 print_freq = 10
 save_gif_freq = 2000
@@ -69,18 +70,21 @@ trainables = tf.trainable_variables()
 target_ops = update_target_graph(trainables, tau)
 
 
-if not os.path.exists(path):
-    os.makedirs(path)
+if not os.path.exists(path_weights):
+    os.makedirs(path_weights)
+
+if not os.path.exists(path_results):
+    os.makedirs(path_results)
 
 
-with open('./Center/log.csv', 'w') as myfile:
-    wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+with open(f"{path_results}/log.csv", 'w') as log_file:
+    wr = csv.writer(log_file, quoting=csv.QUOTE_ALL)
     wr.writerow(['Episode', 'Length', 'Reward', 'IMG', 'LOG', 'SAL'])
 
 with tf.Session() as sess:
     if load_model:
         print('Loading Model...')
-        check_point = tf.train.get_checkpoint_state(path)
+        check_point = tf.train.get_checkpoint_state(path_weights)
         model_saver.restore(sess, check_point.model_checkpoint_path)
     sess.run(init)
     total_steps = 0
@@ -170,7 +174,7 @@ with tf.Session() as sess:
 
         # Periodically save the model.
         if current_episode % save_model_freq == 0:
-            model_saver.save(sess, path + '/model-' + str(current_episode) + '.cptk')
+            model_saver.save(sess, path_weights + '/model-' + str(current_episode) + '.cptk')
             print("Saved Model.")
         if current_episode % print_freq == 0:
             log_game(print_freq, green_list, red_list, stuck_list, current_episode, rewards_list, exploration)
@@ -179,4 +183,4 @@ with tf.Session() as sess:
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 5]),
                            print_freq, final_layer_size, sess, main_q_network, time_per_step)
         current_episode += 1
-    model_saver.save(sess, path + '/model-' + str(current_episode) + '.cptk')
+    model_saver.save(sess, path_weights + '/model-' + str(current_episode) + '.cptk')

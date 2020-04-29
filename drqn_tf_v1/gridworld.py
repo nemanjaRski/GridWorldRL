@@ -14,8 +14,9 @@ class GameOb:
         self.name = name
 
 
+
 class GameEnv:
-    def __init__(self, partial, size, num_goals=20, num_fires=10):
+    def __init__(self, partial, size, num_goals=20, num_fires=10, for_print = False):
         self.sizeX = size
         self.sizeY = size
         self.actions = 4
@@ -24,6 +25,7 @@ class GameEnv:
 
         self.num_goals = num_goals
         self.num_fires = num_fires
+        self.for_print = for_print
 
         self.reset()
 
@@ -104,7 +106,7 @@ class GameEnv:
                     return other.reward, False
         return -0.1, False
 
-    def render_env(self, for_print=False):
+    def render_env(self):
         # a = np.zeros([self.sizeY,self.sizeX,3])
         a = np.ones([self.sizeY + 2, self.sizeX + 2, 3])
         a[1:-1, 1:-1, :] = 0
@@ -115,7 +117,7 @@ class GameEnv:
                 hero = item
         if self.partial:
             a = a[hero.y:hero.y + 3, hero.x:hero.x + 3, :]
-        if for_print:
+        if self.for_print:
             a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)
         else:
             a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True)).astype(np.uint8)
