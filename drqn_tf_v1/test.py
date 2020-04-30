@@ -9,7 +9,7 @@ env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
-num_episodes = 100
+num_episodes = 200
 
 path_weights = "./drqn_weights"
 path_results = "./drqn_test_results"
@@ -17,8 +17,8 @@ final_layer_size = 512
 learning_rate = 0.0001
 max_ep_length = 50
 time_per_step = 1
-print_freq = 5
-save_gif_freq = 5
+print_freq = 100
+save_gif_freq = 1000
 
 tf.reset_default_graph()
 rnn_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=final_layer_size, state_is_tuple=True)
@@ -45,9 +45,10 @@ with open(f"{path_results}/log.csv", 'w') as log_file:
 
 with tf.Session() as sess:
 
-    print('Loading Model...')
+
     check_point = tf.train.get_checkpoint_state(path_weights)
     model_saver.restore(sess, check_point.model_checkpoint_path)
+    print('Model loaded...')
     current_episode = 1
     while current_episode <= num_episodes:
         episode_buffer = []
@@ -96,5 +97,5 @@ with tf.Session() as sess:
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 6]),
-                           print_freq, final_layer_size, sess, q_network, time_per_step, path_results)
+                           print_freq, final_layer_size, sess, q_network, time_per_step, path_results, save_full_state=True)
         current_episode += 1

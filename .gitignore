@@ -78,7 +78,7 @@ fabric.properties
 # Generated weights
 .dqn/models
 .dqn/old_models
-.drqn_tf_v1/drqn_weights/*
+.drqn_tf_v1/drqn_weights
 *.pyc
 *.h5
 *.gif

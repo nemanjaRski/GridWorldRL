@@ -3,6 +3,7 @@ import csv
 import time
 import os
 
+
 # This is a simple function to reshape our game frames.
 def process_state(state1):
     return np.reshape(state1, [21168])
@@ -36,7 +37,8 @@ def update_target(op_holder, sess):
 
 
 # Record performance metrics and episode logs for the Control Center.
-def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, mainQN, time_per_step, path):
+def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, mainQN, time_per_step, path,
+                   save_full_state=False):
     if not os.path.exists(f'{path}/frames'):
         os.makedirs(f'{path}/frames')
     with open(f"{path}/log.csv", 'a') as myfile:
@@ -45,10 +47,11 @@ def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, ma
         images.append(bufferArray[-1, 3])
         make_gif(np.array(images), f'{path}/frames/image' + str(i) + '.gif', duration=len(images) * time_per_step,
                  true_image=True, salience=False)
-
-        full_images = list(bufferArray[:, 5])
-        make_gif(np.array(full_images), f'{path}/frames/full_image' + str(i) + '.gif', duration=len(full_images) * time_per_step,
-                 true_image=True, salience=False)
+        if save_full_state:
+            full_images = list(bufferArray[:, 5])
+            make_gif(np.array(full_images), f'{path}/frames/full_image' + str(i) + '.gif',
+                     duration=len(full_images) * time_per_step,
+                     true_image=True, salience=False)
 
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow([i, np.mean(jList[-100:]), np.mean(rList[-summaryLength:]), './frames/image' + str(i) + '.gif',

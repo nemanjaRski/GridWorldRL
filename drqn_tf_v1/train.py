@@ -13,7 +13,7 @@ state_shape = env.reset().shape
 
 """Training parameters"""
 batch_size = 4
-trace_length = 50
+trace_length = 8
 update_freq = 5
 num_episodes = 10000
 pre_train_steps = 1000
@@ -25,7 +25,7 @@ learning_rate = 0.0001
 
 """Q value parameters"""
 tau = 0.001
-y = .99
+y = .95
 
 """Exploration parameters"""
 exploration_start = 1
@@ -35,7 +35,7 @@ exploration = exploration_start
 exploration_drop_rate = (exploration_start - exploration_end) / exploration_decay_steps
 
 """Debug and save parameters"""
-load_model = True
+load_model = False
 path_weights = "./drqn_weights"
 path_results = "./drqn_train_results"
 time_per_step = 1  # Length of each step used in gif creation

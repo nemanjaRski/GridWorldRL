@@ -115,6 +115,7 @@ class GameEnv:
                 hero = item
         if self.partial:
             a = a[hero.y:hero.y + 3, hero.x:hero.x + 3, :]
+
         if self.for_print:
             a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)
         else:
