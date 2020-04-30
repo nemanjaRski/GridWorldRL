@@ -12,20 +12,20 @@ def draw_text(text, surface, pos_x, pos_y, font_size=24, font_color=YELLOW):
     text_surf = text_font.render(text, True, font_color)
     surface.blit(text_surf, (pos_x, pos_y))
 
-def choose_action():
 
+def choose_action():
     action = None
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 action = -1
-            if event.key == pygame.K_UP:
+            if event.key == pygame.K_UP or event.key == pygame.K_w:
                 action = 0
-            if event.key == pygame.K_DOWN:
+            if event.key == pygame.K_DOWN or event.key == pygame.K_s:
                 action = 1
-            if event.key == pygame.K_LEFT:
+            if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                 action = 2
-            if event.key == pygame.K_RIGHT:
+            if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                 action = 3
             if event.key == pygame.K_SPACE:
                 action = 99
