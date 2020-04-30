@@ -13,9 +13,9 @@ state_shape = env.reset().shape
 
 """Training parameters"""
 batch_size = 4
-trace_length = 8
+trace_length = 50
 update_freq = 5
-num_episodes = 100
+num_episodes = 10000
 pre_train_steps = 1000
 max_ep_length = 50
 
@@ -35,12 +35,12 @@ exploration = exploration_start
 exploration_drop_rate = (exploration_start - exploration_end) / exploration_decay_steps
 
 """Debug and save parameters"""
-load_model = False
+load_model = True
 path_weights = "./drqn_weights"
 path_results = "./drqn_train_results"
 time_per_step = 1  # Length of each step used in gif creation
-print_freq = 10
-save_gif_freq = 2000
+print_freq = 100
+save_gif_freq = 1000
 save_model_freq = 1000
 
 """Initializing buffers"""
@@ -181,6 +181,6 @@ with tf.Session() as sess:
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 5]),
-                           print_freq, final_layer_size, sess, main_q_network, time_per_step)
+                           print_freq, final_layer_size, sess, main_q_network, time_per_step, path_results)
         current_episode += 1
     model_saver.save(sess, path_weights + '/model-' + str(current_episode) + '.cptk')
