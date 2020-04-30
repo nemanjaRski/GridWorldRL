@@ -5,7 +5,7 @@ import os
 import tensorflow.compat.v1 as tf
 
 """Game environment"""
-env = GameEnv(partial=True, size=9, num_goals=4, num_fires=2, for_print=True)
+env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
@@ -69,8 +69,9 @@ with tf.Session() as sess:
                                                          q_network.batch_size: 1})
             action = action[0]
             next_state, reward, done = env.step(action)
+            full_state = env.render_full_env()
             episode_buffer.append(
-                np.reshape(np.array([state, action, reward, next_state, done]), [1, 5]))
+                np.reshape(np.array([state, action, reward, next_state, done, full_state]), [1, 6]))
             episode_reward += reward
             num_of_green += int(reward == 1)
             num_of_red += int(reward == -1)
@@ -94,6 +95,6 @@ with tf.Session() as sess:
             log_game(print_freq, green_list, red_list, stuck_list, current_episode, rewards_list, 0)
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
-                           np.reshape(np.array(episode_buffer), [len(episode_buffer), 5]),
+                           np.reshape(np.array(episode_buffer), [len(episode_buffer), 6]),
                            print_freq, final_layer_size, sess, q_network, time_per_step, path_results)
         current_episode += 1

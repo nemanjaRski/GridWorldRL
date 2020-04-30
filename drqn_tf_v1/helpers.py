@@ -46,6 +46,10 @@ def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, ma
         make_gif(np.array(images), f'{path}/frames/image' + str(i) + '.gif', duration=len(images) * time_per_step,
                  true_image=True, salience=False)
 
+        full_images = list(bufferArray[:, 5])
+        make_gif(np.array(full_images), f'{path}/frames/full_image' + str(i) + '.gif', duration=len(full_images) * time_per_step,
+                 true_image=True, salience=False)
+
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow([i, np.mean(jList[-100:]), np.mean(rList[-summaryLength:]), './frames/image' + str(i) + '.gif',
                      './frames/log' + str(i) + '.csv', './frames/sal' + str(i) + '.gif'])
