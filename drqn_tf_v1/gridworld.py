@@ -15,12 +15,16 @@ class GameOb:
 
 
 class GameEnv:
-    def __init__(self, partial, size, num_goals=20, num_fires=10, for_print=False):
+    def __init__(self, partial, size, num_goals=20, num_fires=10, for_print=False, sight=1):
         self.sizeX = size
         self.sizeY = size
         self.actions = 4
         self.objects = []
         self.partial = partial
+
+        self.sight = int(sight)
+        if self.sight * 2 > self.sizeX:
+            self.sight = int(self.sizeX / 2)
 
         self.num_goals = num_goals
         self.num_fires = num_fires
@@ -51,16 +55,16 @@ class GameEnv:
         hero_y = hero.y
         penalize = 0.
 
-        if direction == 0 and hero.y >= 1:
+        if direction == 0 and hero.y >= self.sight:
             hero.y -= 1
-        if direction == 1 and hero.y <= self.sizeY - 2:
+        if direction == 1 and hero.y < self.sizeY - 2 + self.sight:
             hero.y += 1
-        if direction == 2 and hero.x >= 1:
+        if direction == 2 and hero.x >= self.sight:
             hero.x -= 1
-        if direction == 3 and hero.x <= self.sizeX - 2:
+        if direction == 3 and hero.x < self.sizeX - 2 + self.sight:
             hero.x += 1
         if hero.x == hero_x and hero.y == hero_y:
-            penalize = -1
+            penalize = 0
 
         self.objects[0] = hero
 
@@ -68,7 +72,7 @@ class GameEnv:
 
     def new_position(self):
 
-        iterables = [range(self.sizeX), range(self.sizeY)]
+        iterables = [range(self.sight - 1, self.sizeX + self.sight), range(self.sight - 1, self.sizeY + self.sight)]
         points = []
         current_positions = []
 
@@ -83,7 +87,6 @@ class GameEnv:
             points.remove(pos)
 
         location = np.random.choice(range(len(points)), replace=False)
-
         return points[location]
 
     def check_goal(self):
@@ -106,15 +109,17 @@ class GameEnv:
         return -0.1, False
 
     def render_env(self):
-        a = np.ones([self.sizeY + 2, self.sizeX + 2, 3])
-        a[1:-1, 1:-1, :] = 0
+        a = np.ones([self.sizeY + 2 * self.sight, self.sizeX + 2 * self.sight, 3])
+        a[self.sight:-self.sight, self.sight:-self.sight, :] = 0
+
         hero = None
         for item in self.objects:
             a[item.y + 1:item.y + item.size + 1, item.x + 1:item.x + item.size + 1, item.channel] = item.intensity
             if item.name == 'hero':
                 hero = item
+
         if self.partial:
-            a = a[hero.y:hero.y + 3, hero.x:hero.x + 3, :]
+            a = a[hero.y + 1 - self.sight:hero.y + 2 + self.sight, hero.x + 1 - self.sight:hero.x + 2 + self.sight, :]
 
         if self.for_print:
             a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)

@@ -6,7 +6,7 @@ import os
 import tensorflow.compat.v1 as tf
 
 """Game environment"""
-env = GameEnv(partial=True, size=9, num_goals=4, num_fires=2)
+env = GameEnv(partial=True, size=9, num_goals=4, num_fires=2, sight=2)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
@@ -15,7 +15,7 @@ state_shape = env.reset().shape
 batch_size = 4
 trace_length = 8
 update_freq = 5
-num_episodes = 10000
+num_episodes = 100000
 pre_train_steps = 1000
 max_ep_length = 50
 
@@ -35,7 +35,7 @@ exploration = exploration_start
 exploration_drop_rate = (exploration_start - exploration_end) / exploration_decay_steps
 
 """Debug and save parameters"""
-load_model = False
+load_model = True
 path_weights = "./drqn_weights"
 path_results = "./drqn_train_results"
 time_per_step = 1  # Length of each step used in gif creation

@@ -5,11 +5,11 @@ import os
 import tensorflow.compat.v1 as tf
 
 """Game environment"""
-env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True)
+env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True, sight=2)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
-num_episodes = 200
+num_episodes = 1000
 
 path_weights = "./drqn_weights"
 path_results = "./drqn_test_results"
@@ -18,7 +18,7 @@ learning_rate = 0.0001
 max_ep_length = 50
 time_per_step = 1
 print_freq = 100
-save_gif_freq = 1000
+save_gif_freq = 100
 
 tf.reset_default_graph()
 rnn_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=final_layer_size, state_is_tuple=True)
@@ -99,3 +99,5 @@ with tf.Session() as sess:
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 6]),
                            print_freq, final_layer_size, sess, q_network, time_per_step, path_results, save_full_state=True)
         current_episode += 1
+
+print(np.mean(rewards_list))

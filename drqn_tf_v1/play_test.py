@@ -6,6 +6,10 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 YELLOW = (255, 255, 0)
 
+"""Game environment"""
+
+
+
 
 def draw_text(text, surface, pos_x, pos_y, font_size=24, font_color=YELLOW):
     text_font = pygame.font.SysFont('arial', font_size)
@@ -32,13 +36,12 @@ def choose_action():
     return action
 
 
-
-"""Game environment"""
-env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True)
+env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True, sight=2)
 state = env.reset()
 
-display_width = 1024
-display_height = 768
+
+display_width = 800
+display_height = 800
 cheat = False
 
 pygame.init()
@@ -83,5 +86,5 @@ pygame.display.get_surface().fill(BLACK)
 draw_text("Score: {:.2f}".format(episode_reward), pygame.display.get_surface(), 10, 10, font_size=128, font_color=WHITE)
 pygame.display.update()
 
-pygame.time.delay(3000)
+pygame.time.delay(2000)
 pygame.quit()
