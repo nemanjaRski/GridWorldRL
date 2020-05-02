@@ -60,12 +60,12 @@ def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, ma
     with open(f'{path}/frames/log' + str(i) + '.csv', 'w') as myfile:
         state_train = (np.zeros([1, h_size]), np.zeros([1, h_size]))
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-        wr.writerow(["ACTION", "REWARD", "A0", "A1", 'A2', 'A3', 'V'])
+        wr.writerow(["ACTION", "REWARD", "A0", "A1", 'A2', 'A3', 'A4', 'V'])
         a, v = sess.run([mainQN.advantage, mainQN.value],
                         feed_dict={mainQN.image_in: np.array([*bufferArray[:, 0]]),
                                    mainQN.train_length: len(bufferArray), mainQN.rnn_state_in: state_train,
                                    mainQN.batch_size: 1})
-        wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], a[:, 0], a[:, 1], a[:, 2], a[:, 3], v[:, 0]))
+        wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], a[:, 0], a[:, 1], a[:, 2], a[:, 3], a[:, 4], v[:, 0]))
 
 
 # This code allows gifs to be saved of the training episode for use in the Control Center.

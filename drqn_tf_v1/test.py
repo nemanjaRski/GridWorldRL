@@ -5,7 +5,7 @@ import os
 import tensorflow.compat.v1 as tf
 
 """Game environment"""
-env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True, sight=2)
+env = GameEnv(partial=True, size=7, num_goals=4, num_fires=4, for_print=True, sight=2)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
@@ -44,7 +44,6 @@ with open(f"{path_results}/log.csv", 'w') as log_file:
 
 
 with tf.Session() as sess:
-
 
     check_point = tf.train.get_checkpoint_state(path_weights)
     model_saver.restore(sess, check_point.model_checkpoint_path)

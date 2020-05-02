@@ -1,14 +1,9 @@
 from gridworld import GameEnv
 import pygame
-from PIL import Image
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 YELLOW = (255, 255, 0)
-
-"""Game environment"""
-
-
 
 
 def draw_text(text, surface, pos_x, pos_y, font_size=24, font_color=YELLOW):
@@ -33,10 +28,13 @@ def choose_action():
                 action = 3
             if event.key == pygame.K_SPACE:
                 action = 99
+            if event.key == pygame.K_q:
+                action = 4
     return action
 
 
-env = GameEnv(partial=True, size=19, num_goals=20, num_fires=15, for_print=True, sight=2)
+"""Game environment"""
+env = GameEnv(partial=True, size=7, num_goals=4, num_fires=4, for_print=True, sight=2)
 state = env.reset()
 
 
@@ -56,12 +54,12 @@ while current_step < max_ep_length:
 
     reward = 0
     action = choose_action()
-
     if action == -1:
         break
     elif action == 99:
         cheat = not cheat
     elif action is not None:
+        print(action)
         next_state, reward, done = env.step(action)
         current_step += 1
 
@@ -86,5 +84,5 @@ pygame.display.get_surface().fill(BLACK)
 draw_text("Score: {:.2f}".format(episode_reward), pygame.display.get_surface(), 10, 10, font_size=128, font_color=WHITE)
 pygame.display.update()
 
-pygame.time.delay(2000)
+
 pygame.quit()

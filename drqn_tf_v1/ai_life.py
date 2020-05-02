@@ -108,14 +108,16 @@ class GameEnv:
                     return other.reward, False
         return -0.1, False
 
-    def render_env(self):
+    def render_env(self, revealed=False):
         a = np.ones([self.sizeY + 2 * self.sight, self.sizeX + 2 * self.sight, 3])
         a[self.sight:-self.sight, self.sight:-self.sight, :] = 0
 
         hero = None
         for item in self.objects:
-            a[item.y + 1:item.y + item.size + 1, item.x + 1:item.x + item.size + 1, item.channel] = item.intensity
+            if revealed:
+                a[item.y + 1:item.y + item.size + 1, item.x + 1:item.x + item.size + 1, item.channel] = item.intensity
             if item.name == 'hero':
+                a[item.y + 1:item.y + item.size + 1, item.x + 1:item.x + item.size + 1, item.channel] = item.intensity
                 hero = item
 
         if self.partial:
@@ -136,10 +138,18 @@ class GameEnv:
         a = (transform.resize(a, [84, 84, 3], order=0, preserve_range=True) * 255).astype(np.uint8)
         return a
 
+
     def step(self, action):
-        penalty = self.move_char(action)
+
+        reveal_map = False
+        if action == 4:
+            reveal_map = True
+            penalty = 0
+        else:
+            penalty = self.move_char(action)
+
         reward, done = self.check_goal()
-        state = self.render_env()
+        state = self.render_env(reveal_map)
 
         if reward is None:
             print(done)

@@ -1,12 +1,17 @@
 from network import Qnetwork
 from experience_buffer import experience_buffer
 from helpers import *
-from gridworld import GameEnv
+from ai_life import GameEnv
 import os
 import tensorflow.compat.v1 as tf
 
+
+
+
+
+
 """Game environment"""
-env = GameEnv(partial=True, size=9, num_goals=4, num_fires=2, sight=2)
+env = GameEnv(partial=True, size=7, num_goals=4, num_fires=4, for_print=False, sight=2)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
@@ -30,7 +35,7 @@ y = .95
 """Exploration parameters"""
 exploration_start = 1
 exploration_end = 0.1
-exploration_decay_steps = 10000
+exploration_decay_steps = 50000
 exploration = exploration_start
 exploration_drop_rate = (exploration_start - exploration_end) / exploration_decay_steps
 
