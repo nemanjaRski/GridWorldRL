@@ -1,4 +1,4 @@
-from gridworld import GameEnv
+from ai_life import GameEnv
 import pygame
 
 WHITE = (255, 255, 255)
@@ -54,6 +54,7 @@ while current_step < max_ep_length:
 
     reward = 0
     action = choose_action()
+    pygame.time.delay(100)
     if action == -1:
         break
     elif action == 99:
@@ -66,7 +67,7 @@ while current_step < max_ep_length:
     if cheat:
         image = pygame.surfarray.make_surface(env.render_full_env())
     else:
-        image = pygame.surfarray.make_surface(env.render_env())
+        image = pygame.surfarray.make_surface(env.render_env(action == 4))
 
     # we have to transform the image -- dunno why
     image = pygame.transform.rotate(image, -90)  # rotate counter-clockwise

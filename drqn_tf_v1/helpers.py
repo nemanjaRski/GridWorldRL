@@ -2,6 +2,7 @@ import numpy as np
 import csv
 import time
 import os
+import matplotlib.pyplot as plt
 
 
 # This is a simple function to reshape our game frames.
@@ -14,12 +15,39 @@ def log_game(print_every, green, red, stuck, num_episode, rewards, prob_random):
     mean_red = np.mean(red[-print_every:])
     mean_stuck = np.mean(stuck[-print_every:])
     mean_reward = np.mean(rewards[-print_every:])
+    max_reward = np.max(rewards[-print_every:])
+    min_reward = np.min(rewards[-print_every:])
     current_time = time.strftime("%H:%M:%S", time.localtime())
 
     print(
-        "Time: {} Num episode: {} Mean reward: {:0.4f} Prob random: {:0.4f}, Green: {:0.04f} , Red: {:0.04f} , Stuck: {:0.04f}".format(
-            current_time, num_episode, mean_reward, prob_random, mean_green, mean_red, mean_stuck))
+        "Time: {} Num episode: {} Mean reward: {:0.4f} Max reward: {:0.1f} Min reward: {:0.1f} Prob random: {:0.4f}, "
+        "Green: {:0.04f} , Red: {:0.04f} , Stuck: {:0.04f}".format(
+            current_time, num_episode, mean_reward, max_reward, min_reward, prob_random, mean_green, mean_red,
+            mean_stuck))
 
+
+def plot_hist(rewards, green, red, print_every, num_episode, base_path):
+    rewards_hist = rewards[-print_every:]
+    green_hist = green[-print_every:]
+    red_hist = red[-print_every:]
+
+    bins_reward = np.linspace(-10, 20, 30)
+    bins_green_red = np.linspace(0, 20, 20)
+
+    fig = plt.figure(figsize=(22, 4))
+    subplot = fig.add_subplot(1, 3, 1)
+    subplot.hist(rewards_hist, bins_reward, color='b', label='rewards')
+    subplot = fig.add_subplot(1, 3, 2)
+    subplot.hist(green_hist, bins_green_red, color='g', label='green')
+    subplot = fig.add_subplot(1, 3, 3)
+    subplot.hist(red_hist, bins_green_red, color='r', label='red')
+
+    fig.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=None)
+
+    if not os.path.exists(f'{base_path}/plots'):
+        os.makedirs(f'{base_path}/plots')
+
+    fig.savefig(f'{base_path}/plots/hist_{num_episode}.png', bbox_inches="tight")
 
 # These functions allows us to update the parameters of our target network with those of the primary network.
 def update_target_graph(tfVars, tau):

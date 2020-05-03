@@ -1,6 +1,6 @@
 from network import Qnetwork
 from helpers import *
-from gridworld import GameEnv
+from ai_life import GameEnv
 import os
 import tensorflow.compat.v1 as tf
 
@@ -9,7 +9,7 @@ env = GameEnv(partial=True, size=7, num_goals=4, num_fires=4, for_print=True, si
 action_space_size = env.actions
 state_shape = env.reset().shape
 
-num_episodes = 1000
+num_episodes = 11
 
 path_weights = "./drqn_weights"
 path_results = "./drqn_test_results"
@@ -17,8 +17,8 @@ final_layer_size = 512
 learning_rate = 0.0001
 max_ep_length = 50
 time_per_step = 1
-print_freq = 100
-save_gif_freq = 100
+print_freq = 10
+save_gif_freq = 1000
 
 tf.reset_default_graph()
 rnn_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=final_layer_size, state_is_tuple=True)
@@ -93,6 +93,7 @@ with tf.Session() as sess:
 
         if current_episode % print_freq == 0:
             log_game(print_freq, green_list, red_list, stuck_list, current_episode, rewards_list, 0)
+            plot_hist(rewards_list, green_list, red_list, print_freq, current_episode, path_results)
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 6]),
