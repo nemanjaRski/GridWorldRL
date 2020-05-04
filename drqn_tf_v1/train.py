@@ -2,19 +2,14 @@ from network import Qnetwork
 from experience_buffer import experience_buffer
 from helpers import *
 from ai_life import GameEnv
+from action_selection_strategies import *
 import os
 import tensorflow.compat.v1 as tf
-
-
-
-
-
 
 """Game environment"""
 env = GameEnv(partial=True, size=7, num_goals=4, num_fires=4, for_print=False, sight=2)
 action_space_size = env.actions
 state_shape = env.reset().shape
-
 
 """Training parameters"""
 batch_size = 4
@@ -35,9 +30,8 @@ y = .95
 """Exploration parameters"""
 exploration_start = 1
 exploration_end = 0.1
-exploration_decay_steps = 50000
 exploration = exploration_start
-exploration_drop_rate = (exploration_start - exploration_end) / exploration_decay_steps
+exploration_drop_rate = (exploration_start - exploration_end) / ((num_episodes * max_ep_length - pre_train_steps) * 0.5)
 
 """Debug and save parameters"""
 load_model = True
@@ -74,13 +68,11 @@ model_saver = tf.train.Saver(max_to_keep=5)
 trainables = tf.trainable_variables()
 target_ops = update_target_graph(trainables, tau)
 
-
 if not os.path.exists(path_weights):
     os.makedirs(path_weights)
 
 if not os.path.exists(path_results):
     os.makedirs(path_results)
-
 
 with open(f"{path_results}/log.csv", 'w') as log_file:
     wr = csv.writer(log_file, quoting=csv.QUOTE_ALL)
@@ -108,20 +100,16 @@ with tf.Session() as sess:
             np.zeros([1, final_layer_size]),
             np.zeros([1, final_layer_size]))  # Reset the recurrent layer's hidden state
         while current_step < max_ep_length:
-            if np.random.rand(1) < exploration or total_steps < pre_train_steps:
-                next_rnn_state = sess.run(main_q_network.rnn_state,
-                                          feed_dict={main_q_network.image_in: [state],
-                                                     main_q_network.train_length: 1,
-                                                     main_q_network.rnn_state_in: previous_rnn_state,
-                                                     main_q_network.batch_size: 1})
-                action = np.random.randint(0, 4)
+            if total_steps < pre_train_steps:
+                next_rnn_state = previous_rnn_state
+                action = random_predict(np.ones(action_space_size), 0)
             else:
-                action, next_rnn_state = sess.run([main_q_network.predict, main_q_network.rnn_state],
+                q_out, next_rnn_state = sess.run([main_q_network.q_out, main_q_network.rnn_state],
                                                   feed_dict={main_q_network.image_in: [state],
                                                              main_q_network.train_length: 1,
                                                              main_q_network.rnn_state_in: previous_rnn_state,
                                                              main_q_network.batch_size: 1})
-                action = action[0]
+                action = boltzman_predict(q_out, exploration)
             next_state, reward, done = env.step(action)
             total_steps += 1
             episode_buffer.append(
