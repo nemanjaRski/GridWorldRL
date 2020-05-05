@@ -1,11 +1,17 @@
 import tf_slim as slim
 import tensorflow.compat.v1 as tf
+
 tf.disable_v2_behavior()
 
 
 class Qnetwork:
-    def __init__(self, num_features, rnn_cell, scope_name, num_actions, state_shape, learning_rate):
+    def __init__(self, final_layer_size, rnn_cell, scope_name, num_actions, state_shape, learning_rate):
+        """Inputs"""
         self.image_in = tf.placeholder(shape=[None, *state_shape], dtype=tf.float32)
+        self.action_in = tf.placeholder(shape=[None], dtype=tf.int32)
+        self.action_in_one_hot = tf.one_hot(self.action_in, num_actions, dtype=tf.float32)
+
+        """Layers"""
         self.conv1 = slim.convolution2d(
             inputs=self.image_in, num_outputs=32,
             kernel_size=[8, 8], stride=[4, 4], padding='VALID',
@@ -19,29 +25,35 @@ class Qnetwork:
             kernel_size=[3, 3], stride=[1, 1], padding='VALID',
             biases_initializer=None, scope=scope_name + '_conv3')
         self.conv4 = slim.convolution2d(
-            inputs=self.conv3, num_outputs=num_features,
+            inputs=self.conv3, num_outputs=final_layer_size,
             kernel_size=[7, 7], stride=[1, 1], padding='VALID',
             biases_initializer=None, scope=scope_name + '_conv4')
 
+        self.fc1 = slim.fully_connected(inputs=self.action_in_one_hot, num_outputs=64, biases_initializer=None,
+                                        activation_fn=tf.nn.relu)
+
         self.train_length = tf.placeholder(dtype=tf.int32)
+        self.batch_size = tf.placeholder(dtype=tf.int32, shape=[])
         # We take the output from the final convolutional layer and send it to a recurrent layer.
         # The input must be reshaped into [batch x trace x units] for rnn processing,
         # and then returned to [batch x units] when sent through the upper levles.
-        self.batch_size = tf.placeholder(dtype=tf.int32, shape=[])
-        self.conv_flat = tf.reshape(slim.flatten(self.conv4), [self.batch_size, self.train_length, num_features])
+        self.fc1 = tf.reshape(self.fc1, [self.batch_size, self.train_length, 64])
+        self.conv_flat = tf.reshape(slim.flatten(self.conv4), [self.batch_size, self.train_length, final_layer_size])
+
+        self.rnn_in = tf.concat([self.conv_flat, self.fc1], -1)
+
         self.rnn_state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
         self.rnn, self.rnn_state = tf.nn.dynamic_rnn(
-            inputs=self.conv_flat, cell=rnn_cell, dtype=tf.float32, initial_state=self.rnn_state_in,
+            inputs=self.rnn_in, cell=rnn_cell, dtype=tf.float32, initial_state=self.rnn_state_in,
             scope=scope_name + '_rnn')
-        self.rnn = tf.reshape(self.rnn, shape=[-1, num_features])
+        self.rnn = tf.reshape(self.rnn, shape=[-1, final_layer_size])
         # The output from the recurrent player is then split into separate Value and Advantage streams
         self.stream_advantage, self.stream_value = tf.split(self.rnn, 2, 1)
-        self.advantage_weights = tf.Variable(tf.random_normal([num_features // 2, num_actions]))
-        self.value_weights = tf.Variable(tf.random_normal([num_features // 2, 1]))
+        self.advantage_weights = tf.Variable(tf.random_normal([final_layer_size // 2, num_actions]))
+        self.value_weights = tf.Variable(tf.random_normal([final_layer_size // 2, 1]))
         self.advantage = tf.matmul(self.stream_advantage, self.advantage_weights)
         self.value = tf.matmul(self.stream_value, self.value_weights)
 
-        self.salience = tf.gradients(self.advantage, self.image_in)
         # Then combine them together to get our final Q-values.
         self.q_out = self.value + tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True))
         self.predict = tf.argmax(self.q_out, 1)
