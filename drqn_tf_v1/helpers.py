@@ -76,7 +76,7 @@ def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, ma
         make_gif(np.array(images), f'{path}/frames/image' + str(i) + '.gif', duration=len(images) * time_per_step,
                  true_image=True, salience=False)
         if save_full_state:
-            full_images = list(bufferArray[:, 5])
+            full_images = list(bufferArray[:, 6])
             make_gif(np.array(full_images), f'{path}/frames/full_image' + str(i) + '.gif',
                      duration=len(full_images) * time_per_step,
                      true_image=True, salience=False)
@@ -92,7 +92,9 @@ def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, ma
         a, v = sess.run([mainQN.advantage, mainQN.value],
                         feed_dict={mainQN.image_in: np.array([*bufferArray[:, 0]]),
                                    mainQN.train_length: len(bufferArray), mainQN.rnn_state_in: state_train,
-                                   mainQN.batch_size: 1})
+                                   mainQN.batch_size: 1,
+                                   mainQN.action_in: bufferArray[:, 5],
+                                   mainQN.keep_per: 1.0})
         wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], a[:, 0], a[:, 1], a[:, 2], a[:, 3], a[:, 4], v[:, 0]))
 
 

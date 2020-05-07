@@ -5,11 +5,11 @@ import os
 import tensorflow.compat.v1 as tf
 
 """Game environment"""
-env = GameEnv(partial=True, size=7, num_goals=4, num_fires=4, for_print=True, sight=2)
+env = GameEnv(partial=True, size=19, num_goals=15, num_fires=15, for_print=True, sight=2)
 action_space_size = env.actions
 state_shape = env.reset().shape
 
-num_episodes = 11
+num_episodes = 1000
 
 path_weights = "./drqn_weights"
 path_results = "./drqn_test_results"
@@ -17,8 +17,8 @@ final_layer_size = 512
 learning_rate = 0.0001
 max_ep_length = 50
 time_per_step = 1
-print_freq = 10
-save_gif_freq = 1000
+print_freq = 500
+save_gif_freq = 100
 
 tf.reset_default_graph()
 rnn_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(num_units=final_layer_size, state_is_tuple=True)
@@ -50,6 +50,9 @@ with tf.Session() as sess:
     print('Model loaded...')
     current_episode = 1
     while current_episode <= num_episodes:
+
+        if current_episode % 100 == 0:
+            print(current_episode)
         episode_buffer = []
         state = env.reset()
         done = False
@@ -61,23 +64,27 @@ with tf.Session() as sess:
         previous_rnn_state = (
             np.zeros([1, final_layer_size]),
             np.zeros([1, final_layer_size]))  # Reset the recurrent layer's hidden state
+        previous_action = -1
         while current_step < max_ep_length:
+
             action, next_rnn_state = sess.run([q_network.predict, q_network.rnn_state],
                                               feed_dict={q_network.image_in: [state / 255.0],
                                                          q_network.train_length: 1,
                                                          q_network.rnn_state_in: previous_rnn_state,
-                                                         q_network.batch_size: 1})
+                                                         q_network.batch_size: 1,
+                                                         q_network.action_in: [previous_action]})
             action = action[0]
             next_state, reward, done = env.step(action)
             full_state = env.render_full_env()
             episode_buffer.append(
-                np.reshape(np.array([state, action, reward, next_state, done, full_state]), [1, 6]))
+                np.reshape(np.array([state, action, reward, next_state, done, previous_action, full_state]), [1, 7]))
             episode_reward += reward
             num_of_green += int(reward == 1)
             num_of_red += int(reward == -1)
             num_of_stuck += int(reward < -1)
             state = next_state
             previous_rnn_state = next_rnn_state
+            previous_action = action
             current_step += 1
             if done:
                 break
@@ -96,7 +103,7 @@ with tf.Session() as sess:
             plot_hist(rewards_list, green_list, red_list, print_freq, current_episode, path_results)
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
-                           np.reshape(np.array(episode_buffer), [len(episode_buffer), 6]),
+                           np.reshape(np.array(episode_buffer), [len(episode_buffer), 7]),
                            print_freq, final_layer_size, sess, q_network, time_per_step, path_results, save_full_state=True)
         current_episode += 1
 
