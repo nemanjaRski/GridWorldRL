@@ -46,13 +46,25 @@ class Qnetwork:
         self.rnn, self.rnn_state = tf.nn.dynamic_rnn(
             inputs=self.rnn_in, cell=rnn_cell, dtype=tf.float32, initial_state=self.rnn_state_in,
             scope=scope_name + '_rnn')
+
         self.rnn = tf.reshape(self.rnn, shape=[-1, final_layer_size])
         # The output from the recurrent player is then split into separate Value and Advantage streams
+        self.keep_per = tf.placeholder(dtype=tf.float32, shape=[])
         self.stream_advantage, self.stream_value = tf.split(self.rnn, 2, 1)
-        self.advantage_weights = tf.Variable(tf.random_normal([final_layer_size // 2, num_actions]))
-        self.value_weights = tf.Variable(tf.random_normal([final_layer_size // 2, 1]))
-        self.advantage = tf.matmul(self.stream_advantage, self.advantage_weights)
-        self.value = tf.matmul(self.stream_value, self.value_weights)
+        self.stream_advantage = slim.dropout(self.stream_advantage, self.keep_per)
+        self.stream_value = slim.dropout(self.stream_value, self.keep_per)
+        # self.advantage_weights = tf.Variable(tf.random_normal([final_layer_size // 2, num_actions]))
+        # self.value_weights = tf.Variable(tf.random_normal([final_layer_size // 2, 1]))
+        # self.advantage = tf.matmul(self.stream_advantage, self.advantage_weights)
+        # self.value = tf.matmul(self.stream_value, self.value_weights)
+
+        self.advantage = slim.fully_connected(inputs=self.stream_advantage, num_outputs=num_actions,
+                                              biases_initializer=None,
+                                              activation_fn=tf.nn.relu)
+        self.advantage = slim.dropout(self.advantage, self.keep_per)
+        self.value = slim.fully_connected(inputs=self.stream_value, num_outputs=1, biases_initializer=None,
+                                          activation_fn=tf.nn.relu)
+        self.value = slim.dropout(self.value, self.keep_per)
 
         # Then combine them together to get our final Q-values.
         self.q_out = self.value + tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True))

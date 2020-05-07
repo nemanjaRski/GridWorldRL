@@ -110,7 +110,8 @@ with tf.Session() as sess:
                                                             main_q_network.train_length: 1,
                                                             main_q_network.rnn_state_in: previous_rnn_state,
                                                             main_q_network.batch_size: 1,
-                                                            main_q_network.action_in: [previous_action]})
+                                                            main_q_network.action_in: [previous_action],
+                                                            main_q_network.keep_per: (1 - exploration) + 0.1})
                 action = boltzman_predict(q_out, exploration)
             next_state, reward, done = env.step(action)
             total_steps += 1
@@ -131,11 +132,13 @@ with tf.Session() as sess:
                     main_actions = sess.run(main_q_network.predict, feed_dict={
                         main_q_network.image_in: np.array([*train_batch[:, 3]]),
                         main_q_network.train_length: trace_length, main_q_network.rnn_state_in: rnn_state_train,
-                        main_q_network.batch_size: batch_size, main_q_network.action_in: train_batch[:, 1]})
+                        main_q_network.batch_size: batch_size, main_q_network.action_in: train_batch[:, 1],
+                        main_q_network.keep_per: 1.0})
                     target_q_values = sess.run(target_q_network.q_out, feed_dict={
                         target_q_network.image_in: np.array([*train_batch[:, 3]]),
                         target_q_network.train_length: trace_length, target_q_network.rnn_state_in: rnn_state_train,
-                        target_q_network.batch_size: batch_size, target_q_network.action_in: train_batch[:, 1]})
+                        target_q_network.batch_size: batch_size, target_q_network.action_in: train_batch[:, 1],
+                        target_q_network.keep_per: 1.0})
                     end_multiplier = -(train_batch[:, 4] - 1)
                     double_q = target_q_values[range(batch_size * trace_length), main_actions]
                     target_q = train_batch[:, 2] + (y * double_q * end_multiplier)
@@ -147,7 +150,8 @@ with tf.Session() as sess:
                                         main_q_network.train_length: trace_length,
                                         main_q_network.rnn_state_in: rnn_state_train,
                                         main_q_network.batch_size: batch_size,
-                                        main_q_network.action_in: train_batch[:, 5]})
+                                        main_q_network.action_in: train_batch[:, 5],
+                                        main_q_network.keep_per: 1.0})
             episode_reward += reward
 
             num_of_green += int(reward == 1)
