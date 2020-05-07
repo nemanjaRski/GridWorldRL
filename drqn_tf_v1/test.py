@@ -40,7 +40,7 @@ if not os.path.exists(path_results):
 
 with open(f"{path_results}/log.csv", 'w') as log_file:
     wr = csv.writer(log_file, quoting=csv.QUOTE_ALL)
-    wr.writerow(['Episode', 'Length', 'Reward', 'IMG', 'LOG', 'SAL'])
+    wr.writerow(['Episode', 'Length', 'Reward', 'IMG', 'LOG'])
 
 with tf.Session() as sess:
     check_point = tf.train.get_checkpoint_state(path_weights)
@@ -105,8 +105,7 @@ with tf.Session() as sess:
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 9]),
-                           print_freq, final_layer_size, sess, q_network, time_per_step, path_results,
-                           save_full_state=True)
+                           print_freq, time_per_step, path_results, save_full_state=True)
         current_episode += 1
 
 print(np.mean(rewards_list))

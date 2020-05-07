@@ -66,33 +66,39 @@ def update_target(op_holder, sess):
 
 
 # Record performance metrics and episode logs for the Control Center.
-def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, mainQN, time_per_step, path,
+def save_to_center(current_episode, reward_list, steps_list, episode_buffer, print_freq, time_per_step, path,
                    save_full_state=False):
     if not os.path.exists(f'{path}/frames'):
         os.makedirs(f'{path}/frames')
-    with open(f"{path}/log.csv", 'a') as myfile:
 
-        images = list(bufferArray[:, 0])
-        images.append(bufferArray[-1, 3])
-        make_gif(np.array(images), f'{path}/frames/image' + str(i) + '.gif', duration=len(images) * time_per_step,
+    images = list(episode_buffer[:, 0])
+    images.append(episode_buffer[-1, 3])
+    make_gif(np.array(images), f'{path}/frames/image' + str(current_episode) + '.gif',
+             duration=len(images) * time_per_step,
+             true_image=True, salience=False)
+    if save_full_state:
+        full_images = list(episode_buffer[:, 6])
+        make_gif(np.array(full_images), f'{path}/frames/full_image' + str(current_episode) + '.gif',
+                 duration=len(full_images) * time_per_step,
                  true_image=True, salience=False)
-        if save_full_state:
-            full_images = list(bufferArray[:, 6])
-            make_gif(np.array(full_images), f'{path}/frames/full_image' + str(i) + '.gif',
-                     duration=len(full_images) * time_per_step,
-                     true_image=True, salience=False)
 
-        wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-        wr.writerow([i, np.mean(jList[-100:]), np.mean(rList[-summaryLength:]), './frames/image' + str(i) + '.gif',
-                     './frames/log' + str(i) + '.csv', './frames/sal' + str(i) + '.gif'])
-        myfile.close()
-    with open(f'{path}/frames/log' + str(i) + '.csv', 'w') as myfile:
-        state_train = (np.zeros([1, h_size]), np.zeros([1, h_size]))
-        wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+    log_to_csv(current_episode, reward_list, steps_list, episode_buffer, print_freq, path)
+
+
+def log_to_csv(current_episode, reward_list, steps_list, episode_buffer, print_freq, path):
+    with open(f"{path}/log.csv", 'a') as log_file:
+        wr = csv.writer(log_file, quoting=csv.QUOTE_ALL)
+        wr.writerow([current_episode, np.mean(steps_list[-100:]), np.mean(reward_list[-print_freq:]),
+                     './frames/image' + str(current_episode) + '.gif',
+                     './frames/log' + str(current_episode) + '.csv'])
+        log_file.close()
+    with open(f'{path}/frames/log' + str(current_episode) + '.csv', 'w') as log_file:
+        wr = csv.writer(log_file, quoting=csv.QUOTE_ALL)
         wr.writerow(["ACTION", "REWARD", "A0", "A1", 'A2', 'A3', 'A4', 'V'])
-        wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], np.vstack(bufferArray[:, 7])[:, 0],
-                         np.vstack(bufferArray[:, 7])[:, 1], np.vstack(bufferArray[:, 7])[:, 2],
-                         np.vstack(bufferArray[:, 7])[:, 3], np.vstack(bufferArray[:, 7])[:, 4], bufferArray[:, 8]))
+        wr.writerows(zip(episode_buffer[:, 1], episode_buffer[:, 2], np.vstack(episode_buffer[:, 7])[:, 0],
+                         np.vstack(episode_buffer[:, 7])[:, 1], np.vstack(episode_buffer[:, 7])[:, 2],
+                         np.vstack(episode_buffer[:, 7])[:, 3], np.vstack(episode_buffer[:, 7])[:, 4],
+                         episode_buffer[:, 8]))
 
 
 # This code allows gifs to be saved of the training episode for use in the Control Center.

@@ -183,6 +183,6 @@ with tf.Session() as sess:
         if current_episode % save_gif_freq == 0:
             save_to_center(current_episode, rewards_list, steps_list,
                            np.reshape(np.array(episode_buffer), [len(episode_buffer), 6]),
-                           print_freq, final_layer_size, sess, main_q_network, time_per_step, path_results)
+                           print_freq, time_per_step, path_results)
         current_episode += 1
     model_saver.save(sess, path_weights + '/model-' + str(current_episode) + '.cptk')
