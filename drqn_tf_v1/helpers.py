@@ -49,6 +49,7 @@ def plot_hist(rewards, green, red, print_every, num_episode, base_path):
 
     fig.savefig(f'{base_path}/plots/hist_{num_episode}.png', bbox_inches="tight")
 
+
 # These functions allows us to update the parameters of our target network with those of the primary network.
 def update_target_graph(tfVars, tau):
     total_vars = len(tfVars)
@@ -89,13 +90,9 @@ def save_to_center(i, rList, jList, bufferArray, summaryLength, h_size, sess, ma
         state_train = (np.zeros([1, h_size]), np.zeros([1, h_size]))
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         wr.writerow(["ACTION", "REWARD", "A0", "A1", 'A2', 'A3', 'A4', 'V'])
-        a, v = sess.run([mainQN.advantage, mainQN.value],
-                        feed_dict={mainQN.image_in: np.array([*bufferArray[:, 0]]),
-                                   mainQN.train_length: len(bufferArray), mainQN.rnn_state_in: state_train,
-                                   mainQN.batch_size: 1,
-                                   mainQN.action_in: bufferArray[:, 5],
-                                   mainQN.keep_per: 1.0})
-        wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], a[:, 0], a[:, 1], a[:, 2], a[:, 3], a[:, 4], v[:, 0]))
+        wr.writerows(zip(bufferArray[:, 1], bufferArray[:, 2], np.vstack(bufferArray[:, 7])[:, 0],
+                         np.vstack(bufferArray[:, 7])[:, 1], np.vstack(bufferArray[:, 7])[:, 2],
+                         np.vstack(bufferArray[:, 7])[:, 3], np.vstack(bufferArray[:, 7])[:, 4], bufferArray[:, 8]))
 
 
 # This code allows gifs to be saved of the training episode for use in the Control Center.
