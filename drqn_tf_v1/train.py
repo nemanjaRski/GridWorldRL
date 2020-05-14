@@ -1,5 +1,5 @@
 from network import Qnetwork
-from experience_buffer import experience_buffer
+from experience_buffer import prioritized_experience_buffer
 from helpers import *
 from ai_life import GameEnv
 from action_selection_strategies import *
@@ -43,7 +43,7 @@ save_gif_freq = 1000
 save_model_freq = 1000
 
 """Initializing buffers"""
-exp_buffer = experience_buffer()
+exp_buffer = prioritized_experience_buffer()
 steps_list = []  # keeps track of steps per episode
 rewards_list = []  # keeps track of rewards per episode
 red_list = []  # keeps track of red items collected per episode
@@ -127,7 +127,7 @@ with tf.Session() as sess:
                     rnn_state_train = (
                         np.zeros([batch_size, final_layer_size]), np.zeros([batch_size, final_layer_size]))
 
-                    train_batch = exp_buffer.sample(batch_size, trace_length)
+                    train_batch, tree_indexes, ISWeights = exp_buffer.sample(batch_size)
 
                     main_actions = sess.run(main_q_network.predict, feed_dict={
                         main_q_network.image_in: np.array([*train_batch[:, 3]]),
@@ -143,7 +143,8 @@ with tf.Session() as sess:
                     double_q = target_q_values[range(batch_size * trace_length), main_actions]
                     target_q = train_batch[:, 2] + (y * double_q * end_multiplier)
                     # Update the network with our target values.
-                    sess.run(main_q_network.update_model,
+
+                    abs_error, _ = sess.run([main_q_network.abs_error, main_q_network.update_model],
                              feed_dict={main_q_network.image_in: np.array([*train_batch[:, 0]]),
                                         main_q_network.target_q: target_q,
                                         main_q_network.actions: train_batch[:, 1],
@@ -151,7 +152,9 @@ with tf.Session() as sess:
                                         main_q_network.rnn_state_in: rnn_state_train,
                                         main_q_network.batch_size: batch_size,
                                         main_q_network.action_in: train_batch[:, 5],
-                                        main_q_network.keep_per: 1.0})
+                                        main_q_network.keep_per: 1.0,
+                                        main_q_network.ISWeights: ISWeights})
+                    exp_buffer.batch_update(tree_indexes, abs_error)
             episode_reward += reward
 
             num_of_green += int(reward == 1)

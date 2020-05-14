@@ -77,15 +77,16 @@ class Qnetwork:
 
         self.q = tf.reduce_sum(tf.multiply(self.q_out, self.actions_one_hot), axis=1)
 
+        self.abs_error = tf.abs(self.target_q - self.q)
         self.td_error = tf.square(self.target_q - self.q)
-
+        self.ISWeights = tf.placeholder(tf.float32, [None, 1], name='IS_weights')
         # In order to only propogate accurate gradients through the network, we will mask the first
         # half of the losses for each trace as per Lample & Chatlot 2016
         self.mask_a = tf.zeros([self.batch_size, self.train_length // 2])
         self.mask_b = tf.ones([self.batch_size, self.train_length // 2])
         self.mask = tf.concat([self.mask_a, self.mask_b], 1)
         self.mask = tf.reshape(self.mask, [-1])
-        self.loss = tf.reduce_mean(self.td_error * self.mask)
+        self.loss = tf.reduce_mean(self.ISWeights * self.td_error * self.mask)
 
         self.trainer = tf.train.AdamOptimizer(learning_rate=learning_rate)
         self.update_model = self.trainer.minimize(self.loss)
