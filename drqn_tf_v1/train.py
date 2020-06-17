@@ -100,6 +100,7 @@ with tf.Session() as sess:
             np.zeros([1, final_layer_size]),
             np.zeros([1, final_layer_size]))  # Reset the recurrent layer's hidden state
         previous_action = -1
+        image, previous_image = state, state
         while current_step < max_ep_length:
             if total_steps < pre_train_steps:
                 next_rnn_state = previous_rnn_state
@@ -113,9 +114,12 @@ with tf.Session() as sess:
                                                             main_q_network.action_in: [previous_action]})
                 action = greedy_predict(q_out, exploration)
             next_state, reward, done = env.step(action)
+            if action == 4:
+                previous_image = image
+                image = next_state
             total_steps += 1
             episode_buffer.append(
-                np.reshape(np.array([state, action, reward, next_state, done, previous_action]), [1, 6]))
+                np.reshape(np.array([previous_image, action, reward, image, done, previous_action]), [1, 6]))
             if total_steps > pre_train_steps:
                 if exploration > exploration_end:
                     exploration -= exploration_drop_rate
