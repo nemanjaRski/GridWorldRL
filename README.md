@@ -1,1 +1,1 @@
-# snake-rl
+# following some reinforcement learning tutorials, and experimenting with DQN in a Gridworld environment
